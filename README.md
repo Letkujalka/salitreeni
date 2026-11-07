@@ -20,8 +20,8 @@ sovellus avataan seuraavan kerran julkaisun jälkeen.
   ja ne ovat aina viimeisinä.
 - **Ensimmäinen kerta:** valitaan liikkeet ja syötetään aloituspainot sekä
   tavoitetoistot (oletukset liikkeen mukaan, noin 10).
-- **Treenin aikana:** kaikki liikkeet näkyvät kortteina, ja järjestystä voi
-  muuttaa ▲▼-napeilla. Kun sarja on tehty, sen ruutua napautetaan, jolloin
+- **Treenin aikana:** kaikki liikkeet näkyvät kortteina, ja liikkeen ⋯-valikosta
+  voi siirtää liikettä ylemmäs tai alemmas. Kun sarja on tehty, sen ruutua napautetaan, jolloin
   sarja kirjataan tavoitetoistoilla ja liikkeen oma ajastin käynnistyy.
   Vajaan sarjan toistot korjataan napauttamalla ruutua uudelleen. Liikkeitä
   voi lisätä, vaihtaa ja poistaa, ja painoa voi muuttaa kesken treenin.
@@ -71,4 +71,5 @@ Settings → Pages → Source: **GitHub Actions**.
 
 | Versio | Muutokset |
 |---|---|
+| 2 | Järjestyksen ▲▼-nuolet poistettu korteista; siirto ylemmäs/alemmas löytyy ⋯-valikosta. |
 | 1 | Ensimmäinen versio: ohjelma kategorioittain, treenin kirjaus, liikekohtaiset ajastimet, automaattinen painojen nosto ja lasku, kuminauhasta siirtyminen, liikkeiden vaihtoehdotukset, varmuuskopio. |

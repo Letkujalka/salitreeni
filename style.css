@@ -100,13 +100,10 @@ label.chk input { width: auto; margin: 0; }
 .ex-title { flex: 1; min-width: 0; }
 .ex-title b { display: block; font-size: 1.1rem; }
 .ex-title small { display: block; }
-.order { display: flex; flex-direction: column; gap: 2px; }
-.order button, .menu {
+.menu {
   background: var(--card2); color: var(--text); border: 0; border-radius: 8px;
-  width: 36px; height: 26px; font-size: .8rem; cursor: pointer;
+  height: 40px; width: 40px; font-size: 1.3rem; cursor: pointer;
 }
-.order button:disabled { opacity: .3; }
-.menu { height: 40px; width: 40px; font-size: 1.3rem; }
 .ex-row { display: flex; align-items: center; justify-content: space-between; margin: 10px 0; gap: 8px; }
 .weight { display: flex; align-items: center; gap: 6px; }
 .weight button {

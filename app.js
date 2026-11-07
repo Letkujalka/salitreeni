@@ -2,7 +2,7 @@
 /* Salitreeni – treenien kirjaus ja painojen automaattinen nosto.
    Kaikki tiedot tallennetaan selaimen localStorageen (avain KEY). */
 
-const APP_VERSION = '1';
+const APP_VERSION = '2';
 const KEY = 'salitreeni.v1';
 const CHANGE_AFTER = 6;   // monenko treenin jälkeen ehdotetaan liikkeen vaihtoa
 const SNOOZE = 3;         // "Ei vielä" siirtää ehdotusta näin monta treeniä
@@ -355,8 +355,6 @@ function cardHtml(e, i, n) {
   const done = e.sets.every(s => s.reps != null);
   return `<div class="card ex ${done ? 'done' : ''}">
     <div class="ex-head">
-      <div class="order"><button data-act="up" data-i="${i}" ${i === 0 ? 'disabled' : ''}>▲</button>
-        <button data-act="down" data-i="${i}" ${i === n - 1 ? 'disabled' : ''}>▼</button></div>
       <div class="ex-title"><b>${esc(e.name)}</b><small>${CAT[e.cat] ? CAT[e.cat].name : ''} · tavoite ${e.sets.length}×${e.reps}</small></div>
       <button class="menu" data-act="menu" data-i="${i}" aria-label="Valikko">⋯</button>
     </div>
@@ -698,12 +696,14 @@ const ACT = {
     const e = entry(el);
     numberBox(`${esc(e.name)} – ${e.kind === 'keho' ? 'lisäpaino' : 'paino'} (kg)`, e.weight, v => { e.weight = v; save(); render(); });
   },
-  up: el => { const i = Number(el.dataset.i), a = S.active.entries; [a[i - 1], a[i]] = [a[i], a[i - 1]]; save(); render(); },
-  down: el => { const i = Number(el.dataset.i), a = S.active.entries; [a[i + 1], a[i]] = [a[i], a[i + 1]]; save(); render(); },
+  up: el => { const i = Number(el.dataset.i), a = S.active.entries; [a[i - 1], a[i]] = [a[i], a[i - 1]]; closeModal(); save(); render(); },
+  down: el => { const i = Number(el.dataset.i), a = S.active.entries; [a[i + 1], a[i]] = [a[i], a[i + 1]]; closeModal(); save(); render(); },
   menu: el => {
     const i = Number(el.dataset.i), e = S.active.entries[i];
     openModal(`<h2>${esc(e.name)}</h2>
       <button class="btn block" data-act="swapEx" data-i="${i}">Vaihda toiseen liikkeeseen</button>
+      ${i > 0 ? `<button class="btn block" data-act="up" data-i="${i}">Siirrä ylemmäs</button>` : ''}
+      ${i < S.active.entries.length - 1 ? `<button class="btn block" data-act="down" data-i="${i}">Siirrä alemmas</button>` : ''}
       <button class="btn block" data-act="addSet" data-i="${i}">Lisää sarja</button>
       ${e.sets.length > 1 ? `<button class="btn block" data-act="delSet" data-i="${i}">Poista viimeinen sarja</button>` : ''}
       <button class="btn block danger" data-act="delEntry" data-i="${i}">Poista treenistä</button>
