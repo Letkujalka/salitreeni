@@ -25,11 +25,12 @@ sovellus avataan seuraavan kerran julkaisun jälkeen.
   sarja kirjataan tavoitetoistoilla ja liikkeen oma ajastin käynnistyy.
   Vajaan sarjan toistot korjataan napauttamalla ruutua uudelleen. Liikkeitä
   voi lisätä, vaihtaa ja poistaa, ja painoa voi muuttaa kesken treenin.
-  Näyttö pysyy päällä treenin ajan.
+  Jokaiseen sarjaan tallentuu paino, jolla se tehtiin, joten painoa voi
+  vaihtaa kesken liikkeen. Näyttö pysyy päällä treenin ajan.
 - **Värit:** vihreä = tavoite täyttyi, keltainen = sarja jäi vajaaksi,
   punainen = sarjaa ei tehty.
 - **Painojen nousu:** jos kaikki sarjat menivät tavoitetoistoilla, paino
-  nousee ensi kerralla liikkeen painonlisäyksen verran (1–5 kg, muokattavissa).
+  (viimeisen sarjan painosta) nousee ensi kerralla liikkeen painonlisäyksen verran (1–5 kg, muokattavissa).
   Jos kaikki sarjat tehtiin samalla painolla kuin edellisellä kerralla mutta
   toistoja tuli yhteensä vähemmän, paino laskee saman verran. Muuten paino
   pysyy samana.
@@ -71,5 +72,6 @@ Settings → Pages → Source: **GitHub Actions**.
 
 | Versio | Muutokset |
 |---|---|
+| 3 | Sarjakohtainen paino: sarjaruudussa näkyy toistojen lisäksi paino, jolla sarja tehtiin. Painon voi vaihtaa sarjojen välissä, ja jo tehdyn sarjan painoa voi korjata napauttamalla ruutua. Progressio laskee seuraavan painon viimeisen sarjan painosta. |
 | 2 | Järjestyksen ▲▼-nuolet poistettu korteista; siirto ylemmäs/alemmas löytyy ⋯-valikosta. |
 | 1 | Ensimmäinen versio: ohjelma kategorioittain, treenin kirjaus, liikekohtaiset ajastimet, automaattinen painojen nosto ja lasku, kuminauhasta siirtyminen, liikkeiden vaihtoehdotukset, varmuuskopio. |

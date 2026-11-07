@@ -115,9 +115,10 @@ label.chk input { width: auto; margin: 0; }
 .timer.idle { color: var(--muted); font-weight: 400; }
 .sets { display: grid; grid-template-columns: repeat(auto-fit, minmax(56px, 1fr)); gap: 8px; }
 .set {
-  height: 60px; border-radius: 12px; border: 2px dashed var(--line); background: transparent;
+  height: 64px; border-radius: 12px; border: 2px dashed var(--line); background: transparent;
   color: #fff; font: inherit; font-size: 1.4rem; font-weight: 700; cursor: pointer;
 }
+.set small { display: block; color: inherit; font-size: .75rem; font-weight: 600; opacity: .85; line-height: 1; margin-top: 2px; }
 .set.ok { background: var(--ok); border: 2px solid var(--ok); }
 .set.part { background: var(--part); border: 2px solid var(--part); color: #222; }
 .set.miss { background: var(--miss); border: 2px solid var(--miss); }

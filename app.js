@@ -2,7 +2,7 @@
 /* Salitreeni – treenien kirjaus ja painojen automaattinen nosto.
    Kaikki tiedot tallennetaan selaimen localStorageen (avain KEY). */
 
-const APP_VERSION = '2';
+const APP_VERSION = '3';
 const KEY = 'salitreeni.v1';
 const CHANGE_AFTER = 6;   // monenko treenin jälkeen ehdotetaan liikkeen vaihtoa
 const SNOOZE = 3;         // "Ei vielä" siirtää ehdotusta näin monta treeniä
@@ -121,7 +121,32 @@ function setClass(s, target, finished) {
   if (s.reps >= target) return 'ok';
   return s.reps > 0 ? 'part' : 'miss';
 }
-function setsText(e) { return e.sets.map(s => s.reps == null ? '–' : s.reps).join(' / '); }
+/** Sarjan paino: tallennettu sarjakohtaisesti, vanhoissa tiedoissa liikkeen paino. */
+function setW(e, s) { return s.w !== undefined ? s.w : e.weight; }
+/** Liikkeen "työpaino": viimeisen tehdyn sarjan paino. */
+function workWeight(e) {
+  const done = e.sets.filter(s => s.reps > 0);
+  return done.length ? setW(e, done[done.length - 1]) : e.weight;
+}
+/** Kaikki tehdyt sarjat samalla painolla? Palauttaa painon tai undefined. */
+function uniformWeight(e) {
+  const ws = e.sets.filter(s => s.reps != null).map(s => setW(e, s));
+  return ws.length && ws.every(w => w === ws[0]) ? ws[0] : undefined;
+}
+function shortW(kind, w) {
+  if (kind === 'nauha' || w == null) return '';
+  if (kind === 'keho') return w ? '+' + fmtKg(w) : 'oma';
+  return fmtKg(w);
+}
+/** Esim. "60 kg · 10 / 10 / 8" tai sekapainoilla "10×60 / 10×62,5 / 8×62,5 kg". */
+function resultText(e) {
+  const u = uniformWeight(e);
+  if (e.kind === 'nauha' || u !== undefined) {
+    const w = u !== undefined ? u : e.weight;
+    return `${weightLabel(e.kind, w)} · ${e.sets.map(s => s.reps == null ? '–' : s.reps).join(' / ')}`;
+  }
+  return e.sets.map(s => s.reps == null ? '–' : `${s.reps}×${shortW(e.kind, setW(e, s))}`).join(' / ') + ' kg';
+}
 function dotsHtml(e) {
   return `<span class="dots">${e.sets.map(s => `<span class="dot ${setClass(s, e.reps, true)}"></span>`).join('')}</span>`;
 }
@@ -146,6 +171,7 @@ function lastUsed(exId) {
 
 /**
  * Seuraavan kerran paino:
+ *  (paino = viimeisen tehdyn sarjan paino)
  *  - kaikki sarjat tavoitetoistoilla  -> paino + lisäys
  *  - kaikki sarjat tehty, samalla painolla vähemmän toistoja kuin edellisellä kerralla -> paino − lisäys
  *  - muuten (esim. osa sarjoista jäi tekemättä) -> sama paino
@@ -158,12 +184,14 @@ function evaluate(e, ex, prev) {
   if (e.kind === 'nauha') {
     return { result: success ? 'success' : 'keep', next: ex.weight, upgrade: success && ex.upgrade ? ex.upgrade : null };
   }
-  if (e.weight == null) return { result: 'keep', next: ex.weight };
-  if (success) return { result: 'up', next: round(e.weight + ex.inc) };
-  if (allDone && prev && prev.weight === e.weight && total(e) < total(prev)) {
-    return { result: 'down', next: Math.max(0, round(e.weight - ex.inc)) };
+  const w = workWeight(e);
+  if (w == null) return { result: 'keep', next: ex.weight };
+  if (success) return { result: 'up', next: round(w + ex.inc) };
+  const same = uniformWeight(e);
+  if (allDone && prev && same !== undefined && same === uniformWeight(prev) && total(e) < total(prev)) {
+    return { result: 'down', next: Math.max(0, round(w - ex.inc)) };
   }
-  return { result: 'keep', next: e.weight };
+  return { result: 'keep', next: w };
 }
 
 function makeEntry(exId) {
@@ -196,8 +224,8 @@ function finishWorkout() {
     const ex = S.exercises[e.exId];
     if (!ex) continue;
     const r = evaluate(e, ex, lastEntry(e.exId));
-    items.push({ name: e.name, kind: e.kind, from: e.weight, to: r.next, result: r.result,
-      upgrade: r.upgrade, sets: e.sets, reps: e.reps });
+    items.push({ name: e.name, kind: e.kind, from: workWeight(e), to: r.next, result: r.result,
+      upgrade: r.upgrade, sets: e.sets, reps: e.reps, weight: e.weight });
     if (e.kind !== 'nauha') ex.weight = r.next;
     if (r.upgrade && !S.suggestions.some(s => s.type === 'upgrade' && s.from === ex.id)) {
       S.suggestions.push({ type: 'upgrade', from: ex.id, to: r.upgrade });
@@ -300,7 +328,7 @@ function suggestionsHtml() {
 function historyHtml() {
   if (!S.sessions.length) return '';
   const rows = S.sessions.slice(-8).reverse().map(s => `<details><summary>${fmtDate(s.start)} · ${s.entries.length} liikettä · ${fmtTime(s.end - s.start)}</summary>
-    <ul class="plan">${s.entries.map(e => `<li><span>${esc(e.name)} ${dotsHtml(e)}</span><span class="r">${weightLabel(e.kind, e.weight)} · ${setsText(e)}</span></li>`).join('')}</ul></details>`).join('');
+    <ul class="plan">${s.entries.map(e => `<li><span>${esc(e.name)} ${dotsHtml(e)}</span><span class="r">${resultText(e)}</span></li>`).join('')}</ul></details>`).join('');
   return `<div class="card"><h2>Viimeisimmät treenit</h2>${rows}</div>`;
 }
 
@@ -339,7 +367,7 @@ function viewWorkout() {
   const a = S.active;
   if (!a) { setTimeout(() => go('#/'), 0); return ''; }
   let h = header('Treeni', '#/', `<span class="clock" data-since="${a.start}"></span>`);
-  h += `<p class="hint">Napauta sarjaruutua, kun sarja on tehty – liikkeen ajastin käynnistyy. Napauta ruutua uudelleen, jos toistoja tuli vähemmän.</p>`;
+  h += `<p class="hint">Napauta sarjaruutua, kun sarja on tehty – liikkeen ajastin käynnistyy. Napauta ruutua uudelleen korjataksesi toistoja tai sarjan painoa.</p>`;
   a.entries.forEach((e, i) => { h += cardHtml(e, i, a.entries.length); });
   h += `<button class="btn block" data-act="addEx">+ Lisää liike</button>
     <button class="btn primary big" data-act="finish">Lopeta treeni</button>
@@ -365,8 +393,8 @@ function cardHtml(e, i, n) {
         ${inc ? `<button data-act="wplus" data-i="${i}">+</button>` : ''}</div>`}
       <span class="timer ${last ? '' : 'idle'}" ${last ? `data-since="${last}"` : ''}>${last ? '' : '–:––'}</span>
     </div>
-    <div class="sets">${e.sets.map((s, j) => `<button class="set ${setClass(s, e.reps)}" data-act="set" data-i="${i}" data-j="${j}">${s.reps == null ? '' : s.reps}</button>`).join('')}</div>
-    ${prev ? `<p class="prev">Edellinen: ${weightLabel(prev.kind, prev.weight)} · ${setsText(prev)}</p>` : ''}
+    <div class="sets">${e.sets.map((s, j) => `<button class="set ${setClass(s, e.reps)}" data-act="set" data-i="${i}" data-j="${j}">${s.reps == null ? '' : `${s.reps}<small>${shortW(e.kind, setW(e, s))}</small>`}</button>`).join('')}</div>
+    ${prev ? `<p class="prev">Edellinen: ${resultText(prev)}</p>` : ''}
   </div>`;
 }
 
@@ -382,7 +410,7 @@ function viewSummary() {
     else if (it.result === 'up') txt = `<span class="up">↑ ${weightLabel(it.kind, it.to)}</span>`;
     else if (it.result === 'down') txt = `<span class="down">↓ ${weightLabel(it.kind, it.to)}</span>`;
     else txt = `<span class="muted">= ${weightLabel(it.kind, it.to)}</span>`;
-    h += `<div class="res"><span>${esc(it.name)}<br><small>${weightLabel(it.kind, it.from)} ${dotsHtml(it)}</small></span><span>${txt}</span></div>`;
+    h += `<div class="res"><span>${esc(it.name)}<br><small>${resultText(it)} ${dotsHtml(it)}</small></span><span>${txt}</span></div>`;
   }
   h += `</div><p class="hint">↑ = paino nousee ensi kerralla, = pysyy samana, ↓ = laskee.</p>
     <a class="btn primary big" href="#/" data-act="closeSummary">Valmis</a>`;
@@ -530,7 +558,9 @@ function openRepsBox(i, j) {
   const max = Math.max(e.reps + 5, cur || 0, 15);
   let btns = '';
   for (let v = 0; v <= max; v++) btns += `<button class="${v === e.reps ? 'target' : ''}" data-act="repsPick" data-v="${v}">${v}</button>`;
-  openModal(`<h2>${esc(e.name)} – sarja ${j + 1}</h2><p class="muted">Montako toistoa tuli? Tavoite ${e.reps}.</p>
+  const wInput = e.kind === 'nauha' ? '' : `<label>${e.kind === 'keho' ? 'Lisäpaino' : 'Paino'} tässä sarjassa (kg)
+    <input id="setWIn" inputmode="decimal" value="${setW(e, e.sets[j]) == null ? '' : fmtKg(setW(e, e.sets[j]))}"></label>`;
+  openModal(`<h2>${esc(e.name)} – sarja ${j + 1}</h2>${wInput}<p class="muted">Montako toistoa tuli? Tavoite ${e.reps}.</p>
     <div class="repsgrid">${btns}</div>
     <div class="row"><button class="btn danger" data-act="repsPick" data-v="">Ei tehty (tyhjennä)</button><button class="btn" data-act="close">Sulje</button></div>`,
   { i, j });
@@ -677,7 +707,7 @@ const ACT = {
     const e = entry(el), j = Number(el.dataset.j);
     if (e.sets[j].reps == null) {
       const k = e.sets.findIndex(s => s.reps == null);
-      e.sets[k] = { reps: e.reps, t: Date.now() };
+      e.sets[k] = { reps: e.reps, t: Date.now(), w: e.kind === 'nauha' ? null : e.weight };
       buzz(40);
       save(); render();
     } else {
@@ -687,7 +717,11 @@ const ACT = {
   repsPick: el => {
     const e = S.active.entries[modalCtx.i];
     const s = e.sets[modalCtx.j];
-    if (el.dataset.v === '') { s.reps = null; s.t = null; } else { s.reps = Number(el.dataset.v); s.t = s.t || Date.now(); }
+    const wIn = document.getElementById('setWIn');
+    if (el.dataset.v === '') { s.reps = null; s.t = null; delete s.w; } else {
+      s.reps = Number(el.dataset.v); s.t = s.t || Date.now();
+      if (wIn) s.w = parseNum(wIn.value) ?? (e.kind === 'keho' ? 0 : null);
+    }
     closeModal(); save(); render();
   },
   wplus: el => { const e = entry(el); e.weight = round((e.weight || 0) + S.exercises[e.exId].inc); save(); render(); },
