@@ -2,7 +2,7 @@
 /* Salitreeni – treenien kirjaus ja painojen automaattinen nosto.
    Kaikki tiedot tallennetaan selaimen localStorageen (avain KEY). */
 
-const APP_VERSION = '6';
+const APP_VERSION = '7';
 const KEY = 'salitreeni.v1';
 const CHANGE_AFTER = 6;   // monenko treenin jälkeen ehdotetaan liikkeen vaihtoa
 const SNOOZE = 3;         // "Ei vielä" siirtää ehdotusta näin monta treeniä
@@ -53,7 +53,8 @@ const DEFAULT_EX = [
   ['dipit_nauha', 'Dipit kuminauhalla', 'rinta', 'nauha', 0, 'dipit'],
   ['dipit', 'Dipit', 'rinta', 'keho', 2.5],
   ['pystypunnerrus', 'Pystypunnerrus tangolla', 'olkapaat', 'paino', 2.5],
-  ['kppunnerrus', 'Pystypunnerrus käsipainoilla istuen/seisten', 'olkapaat', 'paino', 2],
+  ['kppunnerrus', 'Pystypunnerrus käsipainoilla istuen', 'olkapaat', 'paino', 2],
+  ['kppunnerrus_seisten', 'Pystypunnerrus käsipainoilla seisten', 'olkapaat', 'paino', 2],
   ['vipunostot', 'Vipunostot suoralla kädellä', 'olkapaat', 'paino', 1],
   ['vipunostot_vino', 'Vipunostot vinossa', 'olkapaat', 'paino', 1],
   ['hauis_tanko', 'Hauiskääntö tangolla', 'pienet', 'paino', 2.5],
@@ -87,7 +88,7 @@ function defaultExercise([id, name, cat, kind, inc, upgrade]) {
 function freshState() {
   const exercises = {};
   for (const row of DEFAULT_EX) exercises[row[0]] = defaultExercise(row);
-  return { version: 3, exercises, program: null, sessions: [], active: null,
+  return { version: 4, exercises, program: null, sessions: [], active: null,
     suggestions: [], lastSummary: null, lastBackup: null, created: Date.now() };
 }
 
@@ -126,11 +127,20 @@ function migrate(s) {
     }
     s.version = 3;
   }
+  if (s && s.version === 3) {
+    // Pystypunnerrus käsipainoilla jaettiin istuen- ja seisten-versioiksi.
+    const ex = s.exercises;
+    if (ex.kppunnerrus && ex.kppunnerrus.name === 'Pystypunnerrus käsipainoilla istuen/seisten') {
+      ex.kppunnerrus.name = 'Pystypunnerrus käsipainoilla istuen';
+    }
+    for (const row of DEFAULT_EX) if (!ex[row[0]]) ex[row[0]] = defaultExercise(row);
+    s.version = 4;
+  }
   return s;
 }
 
 function validState(s) {
-  return s && s.version === 3 && s.exercises && typeof s.exercises === 'object' && Array.isArray(s.sessions);
+  return s && s.version === 4 && s.exercises && typeof s.exercises === 'object' && Array.isArray(s.sessions);
 }
 
 function load() {
