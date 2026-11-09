@@ -2,7 +2,7 @@
 /* Salitreeni – treenien kirjaus ja painojen automaattinen nosto.
    Kaikki tiedot tallennetaan selaimen localStorageen (avain KEY). */
 
-const APP_VERSION = '3';
+const APP_VERSION = '4';
 const KEY = 'salitreeni.v1';
 const CHANGE_AFTER = 6;   // monenko treenin jälkeen ehdotetaan liikkeen vaihtoa
 const SNOOZE = 3;         // "Ei vielä" siirtää ehdotusta näin monta treeniä
@@ -23,59 +23,87 @@ const KINDS = {
   nauha: 'Kuminauha-avusteinen',
 };
 
-// [id, nimi, kategoria, tyyppi, tavoitetoistot, painonlisäys kg, (nauhaliikkeellä) seuraava liike]
+// Toistoalueet: isot liikkeet 8–10, pienet liikkeet 10–16.
+const RANGE_BIG = [8, 10];
+const RANGE_SMALL = [10, 16];
+const SMALL_IDS = ['vipunostot', 'facepull'];
+const defaultRange = (id, cat) => (cat === 'pienet' || SMALL_IDS.includes(id)) ? RANGE_SMALL : RANGE_BIG;
+
+// [id, nimi, kategoria, tyyppi, painonlisäys kg, (nauhaliikkeellä) seuraava liike]
 const DEFAULT_EX = [
-  ['maastaveto', 'Maastaveto', 'maastaveto', 'paino', 8, 5],
-  ['rdl', 'Romanialainen maastaveto', 'maastaveto', 'paino', 10, 5],
-  ['trapbar', 'Trap bar -maastaveto', 'maastaveto', 'paino', 8, 5],
-  ['hipthrust', 'Hip thrust', 'maastaveto', 'paino', 10, 5],
-  ['hyvaahuomenta', 'Hyvää huomenta', 'maastaveto', 'paino', 10, 2.5],
-  ['takakyykky', 'Takakyykky', 'jalat', 'paino', 8, 5],
-  ['etukyykky', 'Etukyykky', 'jalat', 'paino', 8, 2.5],
-  ['jalkaprassi', 'Jalkaprässi', 'jalat', 'paino', 10, 5],
-  ['bulgarialainen', 'Bulgarialainen kyykky', 'jalat', 'paino', 10, 2],
-  ['askelkyykky', 'Askelkyykky', 'jalat', 'paino', 10, 2],
-  ['leuanveto_nauha', 'Leuanveto kuminauhalla', 'selka', 'nauha', 10, 0, 'leuanveto'],
-  ['leuanveto', 'Leuanveto', 'selka', 'keho', 10, 2.5],
-  ['ylatalja', 'Ylätalja', 'selka', 'paino', 10, 2.5],
-  ['alatalja', 'Alatalja', 'selka', 'paino', 10, 2.5],
-  ['kulmasoutu', 'Kulmasoutu tangolla', 'selka', 'paino', 10, 2.5],
-  ['kpsoutu', 'Käsipainosoutu', 'selka', 'paino', 10, 2],
-  ['penkki', 'Penkkipunnerrus', 'rinta', 'paino', 10, 2.5],
-  ['vinopenkki', 'Vinopenkki', 'rinta', 'paino', 10, 2.5],
-  ['kppenkki', 'Käsipainopenkki', 'rinta', 'paino', 10, 2],
-  ['dipit_nauha', 'Dipit kuminauhalla', 'rinta', 'nauha', 10, 0, 'dipit'],
-  ['dipit', 'Dipit', 'rinta', 'keho', 10, 2.5],
-  ['pystypunnerrus', 'Pystypunnerrus tangolla', 'olkapaat', 'paino', 8, 2.5],
-  ['kppunnerrus', 'Käsipainopunnerrus istuen', 'olkapaat', 'paino', 10, 2],
-  ['vipunostot', 'Vipunostot sivulle', 'olkapaat', 'paino', 12, 1],
-  ['facepull', 'Face pull', 'olkapaat', 'paino', 12, 2.5],
-  ['hauis_tanko', 'Hauiskääntö tangolla', 'pienet', 'paino', 10, 2.5],
-  ['hauis_kp', 'Hauiskääntö käsipainoilla', 'pienet', 'paino', 10, 1],
-  ['ojentaja_talja', 'Ojentajapunnerrus taljassa', 'pienet', 'paino', 12, 2.5],
-  ['ranskalainen', 'Ranskalainen punnerrus', 'pienet', 'paino', 10, 2.5],
-  ['pohje', 'Pohjenousu', 'pienet', 'paino', 15, 5],
+  ['maastaveto', 'Maastaveto', 'maastaveto', 'paino', 5],
+  ['rdl', 'Romanialainen maastaveto', 'maastaveto', 'paino', 5],
+  ['trapbar', 'Trap bar -maastaveto', 'maastaveto', 'paino', 5],
+  ['hipthrust', 'Hip thrust', 'maastaveto', 'paino', 5],
+  ['hyvaahuomenta', 'Hyvää huomenta', 'maastaveto', 'paino', 2.5],
+  ['takakyykky', 'Takakyykky', 'jalat', 'paino', 5],
+  ['etukyykky', 'Etukyykky', 'jalat', 'paino', 2.5],
+  ['jalkaprassi', 'Jalkaprässi', 'jalat', 'paino', 5],
+  ['bulgarialainen', 'Bulgarialainen kyykky', 'jalat', 'paino', 2],
+  ['askelkyykky', 'Askelkyykky', 'jalat', 'paino', 2],
+  ['leuanveto_nauha', 'Leuanveto kuminauhalla', 'selka', 'nauha', 0, 'leuanveto'],
+  ['leuanveto', 'Leuanveto', 'selka', 'keho', 2.5],
+  ['ylatalja', 'Ylätalja', 'selka', 'paino', 2.5],
+  ['alatalja', 'Alatalja', 'selka', 'paino', 2.5],
+  ['kulmasoutu', 'Kulmasoutu tangolla', 'selka', 'paino', 2.5],
+  ['kpsoutu', 'Käsipainosoutu', 'selka', 'paino', 2],
+  ['penkki', 'Penkkipunnerrus', 'rinta', 'paino', 2.5],
+  ['vinopenkki', 'Vinopenkki', 'rinta', 'paino', 2.5],
+  ['kppenkki', 'Käsipainopenkki', 'rinta', 'paino', 2],
+  ['dipit_nauha', 'Dipit kuminauhalla', 'rinta', 'nauha', 0, 'dipit'],
+  ['dipit', 'Dipit', 'rinta', 'keho', 2.5],
+  ['pystypunnerrus', 'Pystypunnerrus tangolla', 'olkapaat', 'paino', 2.5],
+  ['kppunnerrus', 'Käsipainopunnerrus istuen', 'olkapaat', 'paino', 2],
+  ['vipunostot', 'Vipunostot sivulle', 'olkapaat', 'paino', 1],
+  ['facepull', 'Face pull', 'olkapaat', 'paino', 2.5],
+  ['hauis_tanko', 'Hauiskääntö tangolla', 'pienet', 'paino', 2.5],
+  ['hauis_kp', 'Hauiskääntö käsipainoilla', 'pienet', 'paino', 1],
+  ['ojentaja_talja', 'Ojentajapunnerrus taljassa', 'pienet', 'paino', 2.5],
+  ['ranskalainen', 'Ranskalainen punnerrus', 'pienet', 'paino', 2.5],
+  ['pohje', 'Pohjenousu', 'pienet', 'paino', 5],
 ];
 
 /* ---------- tila ---------- */
 
 function freshState() {
   const exercises = {};
-  for (const [id, name, cat, kind, reps, inc, upgrade] of DEFAULT_EX) {
-    exercises[id] = { id, name, cat, kind, reps, sets: 3, inc,
+  for (const [id, name, cat, kind, inc, upgrade] of DEFAULT_EX) {
+    const [repsMin, repsMax] = defaultRange(id, cat);
+    exercises[id] = { id, name, cat, kind, repsMin, repsMax, sets: 3, inc,
       weight: kind === 'keho' ? 0 : null, upgrade: upgrade || null, hidden: false };
   }
-  return { version: 1, exercises, program: null, sessions: [], active: null,
+  return { version: 2, exercises, program: null, sessions: [], active: null,
     suggestions: [], lastSummary: null, lastBackup: null, created: Date.now() };
 }
 
+/** Versio 1 -> 2: yksittäinen tavoitetoistomäärä muuttui toistoalueeksi. */
+function migrate(s) {
+  if (s && s.version === 1) {
+    for (const x of Object.values(s.exercises || {})) {
+      [x.repsMin, x.repsMax] = defaultRange(x.id, x.cat);
+      delete x.reps;
+    }
+    if (s.active) {
+      for (const e of s.active.entries) {
+        const x = s.exercises[e.exId] || {};
+        e.repsMin = x.repsMin || RANGE_BIG[0];
+        e.repsMax = x.repsMax || RANGE_BIG[1];
+        e.prev = [];
+        e.sets.forEach(st => { if (st.reps != null && st.target == null) st.target = e.reps; });
+      }
+    }
+    s.version = 2;
+  }
+  return s;
+}
+
 function validState(s) {
-  return s && s.version === 1 && s.exercises && typeof s.exercises === 'object' && Array.isArray(s.sessions);
+  return s && s.version === 2 && s.exercises && typeof s.exercises === 'object' && Array.isArray(s.sessions);
 }
 
 function load() {
   try {
-    const s = JSON.parse(localStorage.getItem(KEY));
+    const s = migrate(JSON.parse(localStorage.getItem(KEY)));
     if (validState(s)) return s;
   } catch (e) { /* tyhjä tai rikki -> uusi tila */ }
   return freshState();
@@ -148,9 +176,24 @@ function resultText(e) {
   return e.sets.map(s => s.reps == null ? '–' : `${s.reps}×${shortW(e.kind, setW(e, s))}`).join(' / ') + ' kg';
 }
 function dotsHtml(e) {
-  return `<span class="dots">${e.sets.map(s => `<span class="dot ${setClass(s, e.reps, true)}"></span>`).join('')}</span>`;
+  return `<span class="dots">${e.sets.map(s => `<span class="dot ${setClass(s, doneTarget(e, s), true)}"></span>`).join('')}</span>`;
 }
-function total(e) { return e.sets.reduce((a, s) => a + (s.reps || 0), 0); }
+/** Tehdyn sarjan tavoite (vanhoissa tiedoissa liikkeen yhteinen tavoite). */
+function doneTarget(e, s) { return s.target != null ? s.target : (e.reps != null ? e.reps : e.repsMin); }
+
+/**
+ * Sarjan minimitavoite: edellisen kerran saman sarjan tulos, jos se tehtiin
+ * samalla painolla ja se oli toistoalueella. Muuten alueen minimi
+ * (myös aina painon nousun jälkeen, koska paino on silloin eri).
+ */
+function setTarget(e, j, w) {
+  const s = e.sets[j];
+  if (s && s.target != null) return s.target;
+  const p = e.prev && e.prev[j];
+  if (p && p.reps != null && p.w === w && p.reps >= e.repsMin) return Math.min(p.reps, e.repsMax);
+  return e.repsMin;
+}
+const rangeText = x => `${x.sets.length != null ? x.sets.length : x.sets}×${x.repsMin}–${x.repsMax}`;
 
 /** Viimeisin treenikerta, jossa liikettä on tehty vähintään yksi sarja. */
 function lastEntry(exId) {
@@ -170,34 +213,35 @@ function lastUsed(exId) {
 /* ---------- progressio ---------- */
 
 /**
- * Seuraavan kerran paino:
- *  (paino = viimeisen tehdyn sarjan paino)
- *  - kaikki sarjat tavoitetoistoilla  -> paino + lisäys
- *  - kaikki sarjat tehty, samalla painolla vähemmän toistoja kuin edellisellä kerralla -> paino − lisäys
- *  - muuten (esim. osa sarjoista jäi tekemättä) -> sama paino
+ * Seuraavan kerran paino (paino = viimeisen tehdyn sarjan paino):
+ *  - kaikki sarjat toistoalueen maksimiin  -> paino + lisäys
+ *  - jokin tehty sarja jäi alle toistoalueen minimin -> paino − lisäys
+ *  - muuten -> sama paino (sarjojen tulokset ovat ensi kerran minimit)
  */
-function evaluate(e, ex, prev) {
+function evaluate(e, ex) {
   const did = e.sets.filter(s => s.reps > 0);
   if (!did.length) return { result: 'skip', next: ex.weight };
-  const allDone = did.length === e.sets.length;
-  const success = e.sets.every(s => s.reps != null && s.reps >= e.reps);
+  const success = e.sets.every(s => s.reps != null && s.reps >= e.repsMax);
   if (e.kind === 'nauha') {
     return { result: success ? 'success' : 'keep', next: ex.weight, upgrade: success && ex.upgrade ? ex.upgrade : null };
   }
   const w = workWeight(e);
   if (w == null) return { result: 'keep', next: ex.weight };
   if (success) return { result: 'up', next: round(w + ex.inc) };
-  const same = uniformWeight(e);
-  if (allDone && prev && same !== undefined && same === uniformWeight(prev) && total(e) < total(prev)) {
-    return { result: 'down', next: Math.max(0, round(w - ex.inc)) };
-  }
+  if (did.some(s => s.reps < e.repsMin)) return { result: 'down', next: Math.max(0, round(w - ex.inc)) };
   return { result: 'keep', next: w };
+}
+
+function prevSets(exId) {
+  const p = lastEntry(exId);
+  return p ? p.sets.map(s => ({ reps: s.reps, w: setW(p, s) })) : [];
 }
 
 function makeEntry(exId) {
   const ex = S.exercises[exId];
   return { id: uid(), exId, name: ex.name, cat: ex.cat, kind: ex.kind,
-    weight: ex.kind === 'nauha' ? null : ex.weight, reps: ex.reps,
+    weight: ex.kind === 'nauha' ? null : ex.weight, repsMin: ex.repsMin, repsMax: ex.repsMax,
+    prev: prevSets(exId),
     sets: Array.from({ length: ex.sets || 3 }, () => ({ reps: null, t: null })) };
 }
 
@@ -223,9 +267,9 @@ function finishWorkout() {
   for (const e of a.entries) {
     const ex = S.exercises[e.exId];
     if (!ex) continue;
-    const r = evaluate(e, ex, lastEntry(e.exId));
+    const r = evaluate(e, ex);
     items.push({ name: e.name, kind: e.kind, from: workWeight(e), to: r.next, result: r.result,
-      upgrade: r.upgrade, sets: e.sets, reps: e.reps, weight: e.weight });
+      upgrade: r.upgrade, sets: e.sets, repsMin: e.repsMin, repsMax: e.repsMax, weight: e.weight });
     if (e.kind !== 'nauha') ex.weight = r.next;
     if (r.upgrade && !S.suggestions.some(s => s.type === 'upgrade' && s.from === ex.id)) {
       S.suggestions.push({ type: 'upgrade', from: ex.id, to: r.upgrade });
@@ -288,7 +332,7 @@ function viewHome() {
     h += `<button class="btn primary big" data-act="start">Aloita treeni</button>`;
     h += `<div class="card"><h2>Seuraava treeni</h2><ul class="plan">${plannedIds().map(id => {
       const x = S.exercises[id];
-      return `<li><span>${esc(x.name)}</span><span class="r">${weightLabel(x.kind, x.weight)} · ${x.sets}×${x.reps}</span></li>`;
+      return `<li><span>${esc(x.name)}</span><span class="r">${weightLabel(x.kind, x.weight)} · ${rangeText(x)}</span></li>`;
     }).join('')}</ul></div>`;
   }
   h += historyHtml();
@@ -341,7 +385,7 @@ function initDraft() {
 function viewProgram() {
   if (prevPath !== '/ohjelma' || !draft) draft = initDraft();
   let h = header('Ohjelma');
-  h += `<p class="hint">Valitse jokaisesta kategoriasta liike ja syötä aloituspaino sekä tavoitetoistot.
+  h += `<p class="hint">Valitse jokaisesta kategoriasta liike ja syötä aloituspaino. Toistoalue on valmiina (isot liikkeet 8–10, pienet 10–16).
     Pikkulihaksista voi valita useita – niitä tehdään treeneissä vuorotellen.</p>`;
   for (const c of CATS) {
     h += `<section class="cat" id="k-${c.id}"><h2>${c.name}</h2>`;
@@ -353,7 +397,8 @@ function viewProgram() {
       if (sel) {
         h += `<div class="opt-inputs">${x.kind === 'nauha' ? '' : `<label>${x.kind === 'keho' ? 'Lisäpaino' : 'Paino'} (kg)
           <input inputmode="decimal" data-field="weight" data-id="${x.id}" value="${x.weight == null ? '' : fmtKg(x.weight)}" placeholder="kg"></label>`}
-          <label>Toistot<input inputmode="numeric" data-field="reps" data-id="${x.id}" value="${x.reps}"></label>
+          <label>Toistot min<input inputmode="numeric" data-field="repsMin" data-id="${x.id}" value="${x.repsMin}"></label>
+          <label>max<input inputmode="numeric" data-field="repsMax" data-id="${x.id}" value="${x.repsMax}"></label>
           <label>Sarjat<input inputmode="numeric" data-field="sets" data-id="${x.id}" value="${x.sets}"></label></div>`;
       }
     }
@@ -367,7 +412,7 @@ function viewWorkout() {
   const a = S.active;
   if (!a) { setTimeout(() => go('#/'), 0); return ''; }
   let h = header('Treeni', '#/', `<span class="clock" data-since="${a.start}"></span>`);
-  h += `<p class="hint">Napauta sarjaruutua, kun sarja on tehty – liikkeen ajastin käynnistyy. Napauta ruutua uudelleen korjataksesi toistoja tai sarjan painoa.</p>`;
+  h += `<p class="hint">Napauta sarjaruutua, kun sarja on tehty: ruutuun tulee sarjan minimi ja ajastin käynnistyy. Jokainen uusi napautus lisää yhden toiston (maksimin jälkeen alusta). Pitkä painallus: muu määrä, sarjan paino tai tyhjennys.</p>`;
   a.entries.forEach((e, i) => { h += cardHtml(e, i, a.entries.length); });
   h += `<button class="btn block" data-act="addEx">+ Lisää liike</button>
     <button class="btn primary big" data-act="finish">Lopeta treeni</button>
@@ -383,7 +428,7 @@ function cardHtml(e, i, n) {
   const done = e.sets.every(s => s.reps != null);
   return `<div class="card ex ${done ? 'done' : ''}">
     <div class="ex-head">
-      <div class="ex-title"><b>${esc(e.name)}</b><small>${CAT[e.cat] ? CAT[e.cat].name : ''} · tavoite ${e.sets.length}×${e.reps}</small></div>
+      <div class="ex-title"><b>${esc(e.name)}</b><small>${CAT[e.cat] ? CAT[e.cat].name : ''} · ${rangeText(e)}</small></div>
       <button class="menu" data-act="menu" data-i="${i}" aria-label="Valikko">⋯</button>
     </div>
     <div class="ex-row">
@@ -393,7 +438,9 @@ function cardHtml(e, i, n) {
         ${inc ? `<button data-act="wplus" data-i="${i}">+</button>` : ''}</div>`}
       <span class="timer ${last ? '' : 'idle'}" ${last ? `data-since="${last}"` : ''}>${last ? '' : '–:––'}</span>
     </div>
-    <div class="sets">${e.sets.map((s, j) => `<button class="set ${setClass(s, e.reps)}" data-act="set" data-i="${i}" data-j="${j}">${s.reps == null ? '' : `${s.reps}<small>${shortW(e.kind, setW(e, s))}</small>`}</button>`).join('')}</div>
+    <div class="sets">${e.sets.map((s, j) => s.reps == null
+      ? `<button class="set" data-act="set" data-i="${i}" data-j="${j}"><span class="ghost">${setTarget(e, j, e.weight)}</span></button>`
+      : `<button class="set ${setClass(s, doneTarget(e, s))}" data-act="set" data-i="${i}" data-j="${j}">${s.reps}${s.reps >= e.repsMax ? '<sup>★</sup>' : ''}<small>${shortW(e.kind, setW(e, s))}</small></button>`).join('')}</div>
     ${prev ? `<p class="prev">Edellinen: ${resultText(prev)}</p>` : ''}
   </div>`;
 }
@@ -424,7 +471,7 @@ function viewExercises() {
     h += `<div class="card"><h2>${c.name}</h2><ul class="plan">`;
     for (const x of Object.values(S.exercises).filter(x => x.cat === c.id)) {
       h += `<li data-act="editEx" data-id="${x.id}" style="cursor:pointer${x.hidden ? ';opacity:.45' : ''}"><span>${esc(x.name)}</span>
-        <span class="r">${x.sets}×${x.reps} · ${weightLabel(x.kind, x.weight)}${x.kind !== 'nauha' ? ` · +${fmtKg(x.inc)}` : ''}</span></li>`;
+        <span class="r">${rangeText(x)} · ${weightLabel(x.kind, x.weight)}${x.kind !== 'nauha' ? ` · +${fmtKg(x.inc)}` : ''}</span></li>`;
     }
     h += `</ul><button class="linkbtn" data-act="newEx" data-cat="${c.id}">+ Uusi liike</button></div>`;
   }
@@ -532,7 +579,7 @@ function pickExercise(title, cats, onPick) {
 }
 
 function openExEdit(id, presetCat) {
-  const x = id ? S.exercises[id] : { name: '', cat: presetCat || 'rinta', kind: 'paino', reps: 10, sets: 3, inc: 2.5, weight: null, upgrade: null, hidden: false };
+  const x = id ? S.exercises[id] : { name: '', cat: presetCat || 'rinta', kind: 'paino', repsMin: 8, repsMax: 10, sets: 3, inc: 2.5, weight: null, upgrade: null, hidden: false };
   const opts = (obj, cur) => Object.entries(obj).map(([k, v]) => `<option value="${k}" ${k === cur ? 'selected' : ''}>${esc(v)}</option>`).join('');
   const upg = Object.values(S.exercises).filter(e => e.kind !== 'nauha')
     .map(e => `<option value="${e.id}" ${e.id === x.upgrade ? 'selected' : ''}>${esc(e.name)}</option>`).join('');
@@ -542,7 +589,9 @@ function openExEdit(id, presetCat) {
       <label>Kategoria<select id="f_cat">${opts(Object.fromEntries(CATS.map(c => [c.id, c.name])), x.cat)}</select></label>
       <label>Tyyppi<select id="f_kind">${opts(KINDS, x.kind)}</select></label>
       <label>Sarjat<input id="f_sets" inputmode="numeric" value="${x.sets}"></label>
-      <label>Tavoitetoistot<input id="f_reps" inputmode="numeric" value="${x.reps}"></label>
+      <span></span>
+      <label>Toistot min<input id="f_rmin" inputmode="numeric" value="${x.repsMin}"></label>
+      <label>Toistot max<input id="f_rmax" inputmode="numeric" value="${x.repsMax}"></label>
       <label>Painonlisäys (kg)<input id="f_inc" inputmode="decimal" value="${fmtKg(x.inc)}"></label>
       <label>Seuraava paino (kg)<input id="f_weight" inputmode="decimal" value="${x.weight == null ? '' : fmtKg(x.weight)}"></label>
     </div>
@@ -555,12 +604,17 @@ function openExEdit(id, presetCat) {
 function openRepsBox(i, j) {
   const e = S.active.entries[i];
   const cur = e.sets[j].reps;
-  const max = Math.max(e.reps + 5, cur || 0, 15);
+  const w0 = cur == null ? e.weight : setW(e, e.sets[j]);
+  const target = setTarget(e, j, w0);
+  const max = Math.max(e.repsMax + 4, cur || 0, 14);
   let btns = '';
-  for (let v = 0; v <= max; v++) btns += `<button class="${v === e.reps ? 'target' : ''}" data-act="repsPick" data-v="${v}">${v}</button>`;
+  for (let v = 0; v <= max; v++) {
+    const cls = v === target ? 'target' : (v >= e.repsMin && v <= e.repsMax ? 'inrange' : '');
+    btns += `<button class="${cls}" data-act="repsPick" data-v="${v}">${v}</button>`;
+  }
   const wInput = e.kind === 'nauha' ? '' : `<label>${e.kind === 'keho' ? 'Lisäpaino' : 'Paino'} tässä sarjassa (kg)
-    <input id="setWIn" inputmode="decimal" value="${setW(e, e.sets[j]) == null ? '' : fmtKg(setW(e, e.sets[j]))}"></label>`;
-  openModal(`<h2>${esc(e.name)} – sarja ${j + 1}</h2>${wInput}<p class="muted">Montako toistoa tuli? Tavoite ${e.reps}.</p>
+    <input id="setWIn" inputmode="decimal" value="${w0 == null ? '' : fmtKg(w0)}"></label>`;
+  openModal(`<h2>${esc(e.name)} – sarja ${j + 1}</h2>${wInput}<p class="muted">Montako toistoa tuli? Tavoite ${target}, alue ${e.repsMin}–${e.repsMax}.</p>
     <div class="repsgrid">${btns}</div>
     <div class="row"><button class="btn danger" data-act="repsPick" data-v="">Ei tehty (tyhjennä)</button><button class="btn" data-act="close">Sulje</button></div>`,
   { i, j });
@@ -597,7 +651,7 @@ function importBackup(file) {
   const reader = new FileReader();
   reader.onload = () => {
     let st;
-    try { const d = JSON.parse(reader.result); st = d && d.state ? d.state : d; } catch (e) { st = null; }
+    try { const d = JSON.parse(reader.result); st = migrate(d && d.state ? d.state : d); } catch (e) { st = null; }
     if (!validState(st)) { alert('Tiedosto ei ole Salitreenin varmuuskopio.'); return; }
     const last = st.sessions.length ? fmtDate(st.sessions[st.sessions.length - 1].start) : '–';
     confirmBox(`Varmuuskopiossa on ${st.sessions.length} treeniä (viimeisin ${last}). Korvataanko nykyiset tiedot?`, 'Palauta', () => {
@@ -656,13 +710,15 @@ const ACT = {
     const x = {
       ...old, id, name, cat: val('f_cat'), kind: val('f_kind'),
       sets: Math.max(1, parseInt(val('f_sets'), 10) || 3),
-      reps: Math.max(1, parseInt(val('f_reps'), 10) || 10),
+      repsMin: Math.max(1, parseInt(val('f_rmin'), 10) || 8),
+      repsMax: Math.max(1, parseInt(val('f_rmax'), 10) || 10),
       inc: Math.max(0, parseNum(val('f_inc')) ?? 2.5),
       weight: parseNum(val('f_weight')),
       upgrade: val('f_upg') || null,
       hidden: document.getElementById('f_hidden').checked,
     };
     if (x.kind === 'keho' && x.weight == null) x.weight = 0;
+    if (x.repsMax < x.repsMin) x.repsMax = x.repsMin;
     S.exercises[id] = x;
     if (!modalCtx.exId && draft && prevPath === '/ohjelma' && !x.hidden) {
       if (CAT[x.cat].multi) draft[x.cat].push(id); else draft[x.cat] = [id];
@@ -703,24 +759,32 @@ const ACT = {
   },
 
   // treeni
+  // Napautus: tyhjä sarja -> sarjan minimi ja ajastin käyntiin.
+  // Tehty sarja -> +1 toisto, maksimin jälkeen alueen minimiin.
   set: el => {
+    if (lpFired) { lpFired = false; return; }
     const e = entry(el), j = Number(el.dataset.j);
-    if (e.sets[j].reps == null) {
-      const k = e.sets.findIndex(s => s.reps == null);
-      e.sets[k] = { reps: e.reps, t: Date.now(), w: e.kind === 'nauha' ? null : e.weight };
+    const s = e.sets[j];
+    if (s.reps == null) {
+      const k = e.sets.findIndex(x => x.reps == null);
+      const w = e.kind === 'nauha' ? null : e.weight;
+      const target = setTarget(e, k, w);
+      e.sets[k] = { reps: target, target, t: Date.now(), w };
       buzz(40);
-      save(); render();
     } else {
-      openRepsBox(Number(el.dataset.i), j);
+      s.reps = s.reps >= e.repsMax ? e.repsMin : s.reps + 1;
+      buzz(15);
     }
+    save(); render();
   },
   repsPick: el => {
     const e = S.active.entries[modalCtx.i];
     const s = e.sets[modalCtx.j];
     const wIn = document.getElementById('setWIn');
-    if (el.dataset.v === '') { s.reps = null; s.t = null; delete s.w; } else {
+    if (el.dataset.v === '') { e.sets[modalCtx.j] = { reps: null, t: null }; } else {
+      s.w = e.kind === 'nauha' ? null : (wIn ? parseNum(wIn.value) ?? (e.kind === 'keho' ? 0 : null) : e.weight);
+      if (s.target == null) s.target = setTarget(e, modalCtx.j, s.w);
       s.reps = Number(el.dataset.v); s.t = s.t || Date.now();
-      if (wIn) s.w = parseNum(wIn.value) ?? (e.kind === 'keho' ? 0 : null);
     }
     closeModal(); save(); render();
   },
@@ -784,9 +848,38 @@ document.addEventListener('change', e => {
     if (!x) return;
     if (t.dataset.field === 'weight') x.weight = parseNum(t.value) ?? (x.kind === 'keho' ? 0 : null);
     else x[t.dataset.field] = Math.max(1, parseInt(t.value, 10) || x[t.dataset.field]);
+    if (x.repsMax < x.repsMin) {
+      if (t.dataset.field === 'repsMin') x.repsMax = x.repsMin; else x.repsMin = x.repsMax;
+      render();
+    }
     save();
   }
 });
+
+// Pitkä painallus sarjaruudussa avaa toistovalitsimen.
+let lpTimer = null, lpFired = false, lpStart = null;
+document.addEventListener('pointerdown', e => {
+  lpFired = false;
+  const el = e.target.closest('.set[data-act=set]');
+  if (!el) return;
+  lpStart = [e.clientX, e.clientY];
+  lpTimer = setTimeout(() => {
+    lpTimer = null;
+    lpFired = true;
+    buzz(30);
+    const i = Number(el.dataset.i), e2 = S.active.entries[i];
+    let j = Number(el.dataset.j);
+    if (e2.sets[j].reps == null) j = e2.sets.findIndex(x => x.reps == null);
+    openRepsBox(i, j);
+  }, 500);
+});
+const lpCancel = () => { if (lpTimer) { clearTimeout(lpTimer); lpTimer = null; } };
+document.addEventListener('pointerup', lpCancel);
+document.addEventListener('pointercancel', lpCancel);
+document.addEventListener('pointermove', e => {
+  if (lpTimer && lpStart && Math.hypot(e.clientX - lpStart[0], e.clientY - lpStart[1]) > 12) lpCancel();
+});
+document.addEventListener('contextmenu', e => { if (e.target.closest('.set')) e.preventDefault(); });
 
 window.addEventListener('hashchange', render);
 if (navigator.storage && navigator.storage.persist) navigator.storage.persist();

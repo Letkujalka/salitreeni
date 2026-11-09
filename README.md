@@ -18,24 +18,32 @@ sovellus avataan seuraavan kerran julkaisun jälkeen.
   pikkulihakset. Ohjelmaan valitaan yksi liike per kategoria. Pikkulihaksiin
   voi valita useita liikkeitä, jolloin niitä tehdään treeneissä vuorotellen
   ja ne ovat aina viimeisinä.
-- **Ensimmäinen kerta:** valitaan liikkeet ja syötetään aloituspainot sekä
-  tavoitetoistot (oletukset liikkeen mukaan, noin 10).
-- **Treenin aikana:** kaikki liikkeet näkyvät kortteina, ja liikkeen ⋯-valikosta
-  voi siirtää liikettä ylemmäs tai alemmas. Kun sarja on tehty, sen ruutua napautetaan, jolloin
-  sarja kirjataan tavoitetoistoilla ja liikkeen oma ajastin käynnistyy.
-  Vajaan sarjan toistot korjataan napauttamalla ruutua uudelleen. Liikkeitä
-  voi lisätä, vaihtaa ja poistaa, ja painoa voi muuttaa kesken treenin.
-  Jokaiseen sarjaan tallentuu paino, jolla se tehtiin, joten painoa voi
-  vaihtaa kesken liikkeen. Näyttö pysyy päällä treenin ajan.
-- **Värit:** vihreä = tavoite täyttyi, keltainen = sarja jäi vajaaksi,
-  punainen = sarjaa ei tehty.
-- **Painojen nousu:** jos kaikki sarjat menivät tavoitetoistoilla, paino
-  (viimeisen sarjan painosta) nousee ensi kerralla liikkeen painonlisäyksen verran (1–5 kg, muokattavissa).
-  Jos kaikki sarjat tehtiin samalla painolla kuin edellisellä kerralla mutta
-  toistoja tuli yhteensä vähemmän, paino laskee saman verran. Muuten paino
-  pysyy samana.
+- **Ensimmäinen kerta:** valitaan liikkeet ja syötetään aloituspainot.
+- **Toistoalueet:** isot liikkeet 8–10 toistoa, pikkulihakset (sekä
+  vipunostot ja face pull) 10–16. Alueen voi muuttaa liikekohtaisesti.
+- **Sarjan minimi:** alussa ja aina painon nousun jälkeen jokaisen sarjan
+  minimi on alueen alaraja (esim. 8 / 8 / 8). Muuten edellisen kerran
+  tulos on uusi minimi: jos edellisellä kerralla tuli 9 / 9 / 8, rajat ovat
+  9–10 / 9–10 / 8–10. Tyhjässä sarjaruudussa näkyy sarjan minimi.
+- **Treenin aikana:** kaikki liikkeet näkyvät kortteina, ja liikkeen
+  ⋯-valikosta voi siirtää liikettä ylemmäs tai alemmas, vaihtaa sen,
+  lisätä tai poistaa sarjoja.
+  - Ensimmäinen napautus kirjaa sarjan minimin ja käynnistää liikkeen
+    ajastimen. Jokainen seuraava napautus lisää yhden toiston, ja maksimin
+    jälkeen luku palaa alueen alarajaan.
+  - Pitkä painallus avaa valitsimen: mikä tahansa toistomäärä (myös alueen
+    ulkopuolelta), sarjan paino tai sarjan tyhjennys.
+  - Jokaiseen sarjaan tallentuu paino, jolla se tehtiin, joten painoa voi
+    vaihtaa kesken liikkeen. Näyttö pysyy päällä treenin ajan.
+- **Värit:** vihreä = sarjan minimi saavutettu (★ = alueen maksimi),
+  keltainen = jäi alle minimin, punainen = sarjaa ei tehty.
+- **Painojen nousu ja lasku** (viimeisen sarjan painosta):
+  - kaikki sarjat alueen maksimiin → paino nousee liikkeen painonlisäyksen
+    verran (1–5 kg, muokattavissa)
+  - jokin sarja jäi alle alueen alarajan → paino laskee saman verran
+  - muuten paino pysyy, ja tulokset ovat ensi kerran minimit.
 - **Kehonpainoliikkeet** (leuanveto, dipit): paino tarkoittaa lisäpainoa,
-  joka nousee, kun 3×10 menee läpi. **Kuminauhaversiot** ovat omia
+  joka nousee, kun 3×10 (alueen maksimi) menee läpi. **Kuminauhaversiot** ovat omia
   liikkeitään. Kun 3×10 menee läpi, sovellus ehdottaa siirtymistä
   versioon ilman kuminauhaa.
 - **Liikkeiden vaihto:** kun sama liike on ollut ohjelmassa 6 treeniä,
@@ -72,6 +80,7 @@ Settings → Pages → Source: **GitHub Actions**.
 
 | Versio | Muutokset |
 |---|---|
+| 4 | Toistoalueet (8–10 / 10–16) ja sarjakohtaiset minimit edellisen kerran tuloksista. Napautus kirjaa minimin ja lisää toistoja yksi kerrallaan, pitkä painallus avaa valitsimen. Paino nousee, kun kaikki sarjat menevät maksimiin, ja laskee, jos sarja jää alle alueen. Vanhat tiedot muunnetaan automaattisesti. |
 | 3 | Sarjakohtainen paino: sarjaruudussa näkyy toistojen lisäksi paino, jolla sarja tehtiin. Painon voi vaihtaa sarjojen välissä, ja jo tehdyn sarjan painoa voi korjata napauttamalla ruutua. Progressio laskee seuraavan painon viimeisen sarjan painosta. |
 | 2 | Järjestyksen ▲▼-nuolet poistettu korteista; siirto ylemmäs/alemmas löytyy ⋯-valikosta. |
 | 1 | Ensimmäinen versio: ohjelma kategorioittain, treenin kirjaus, liikekohtaiset ajastimet, automaattinen painojen nosto ja lasku, kuminauhasta siirtyminen, liikkeiden vaihtoehdotukset, varmuuskopio. |
