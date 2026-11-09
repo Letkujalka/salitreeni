@@ -49,6 +49,10 @@ sovellus avataan seuraavan kerran julkaisun jälkeen.
 - **Liikkeiden vaihto:** kun sama liike on ollut ohjelmassa 6 treeniä,
   etusivulla ehdotetaan saman kategorian toista liikettä. Ehdotuksen voi
   hyväksyä, valita liikkeen itse tai siirtää 3 treenillä eteenpäin.
+- **Treenin poisto:** etusivun treenihistoriassa avaa treeni ja paina
+  "Poista treeni". Jos poistat viimeisimmän treenin, liikkeiden painot
+  palautetaan treeniä edeltäneisiin. Vanhemman treenin poisto ei muuta
+  painoja. Yli 8 treenin historian saa näkyviin "Näytä kaikki" -linkistä.
 - **Varmuuskopio:** Varmuuskopio-sivulla tiedot viedään yhdeksi tiedostoksi,
   joka kannattaa tallentaa esim. Google Driveen. Sama tiedosto palautetaan
   "Tuo varmuuskopio" -napista. Etusivu muistuttaa, jos edellisestä
@@ -80,6 +84,7 @@ Settings → Pages → Source: **GitHub Actions**.
 
 | Versio | Muutokset |
 |---|---|
+| 5 | Treenin poisto historiasta (viimeisimmän poisto palauttaa painot), koko historian näyttö. |
 | 4 | Toistoalueet (8–10 / 10–16) ja sarjakohtaiset minimit edellisen kerran tuloksista. Napautus kirjaa minimin ja lisää toistoja yksi kerrallaan, pitkä painallus avaa valitsimen. Paino nousee, kun kaikki sarjat menevät maksimiin, ja laskee, jos sarja jää alle alueen. Vanhat tiedot muunnetaan automaattisesti. |
 | 3 | Sarjakohtainen paino: sarjaruudussa näkyy toistojen lisäksi paino, jolla sarja tehtiin. Painon voi vaihtaa sarjojen välissä, ja jo tehdyn sarjan painoa voi korjata napauttamalla ruutua. Progressio laskee seuraavan painon viimeisen sarjan painosta. |
 | 2 | Järjestyksen ▲▼-nuolet poistettu korteista; siirto ylemmäs/alemmas löytyy ⋯-valikosta. |

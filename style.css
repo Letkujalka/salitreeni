@@ -64,6 +64,7 @@ p { margin: 6px 0; }
 .plan li:last-child { border-bottom: 0; }
 .plan .r { color: var(--muted); white-space: nowrap; }
 details summary { cursor: pointer; padding: 4px 0; }
+details .btn { margin: 6px 0 10px; }
 .dots { display: inline-flex; gap: 3px; vertical-align: middle; }
 .dot { width: 10px; height: 10px; border-radius: 50%; background: var(--line); }
 .dot.ok { background: var(--ok); } .dot.part { background: var(--part); } .dot.miss, .dot.pend { background: var(--miss); }

@@ -2,7 +2,7 @@
 /* Salitreeni – treenien kirjaus ja painojen automaattinen nosto.
    Kaikki tiedot tallennetaan selaimen localStorageen (avain KEY). */
 
-const APP_VERSION = '4';
+const APP_VERSION = '5';
 const KEY = 'salitreeni.v1';
 const CHANGE_AFTER = 6;   // monenko treenin jälkeen ehdotetaan liikkeen vaihtoa
 const SNOOZE = 3;         // "Ei vielä" siirtää ehdotusta näin monta treeniä
@@ -118,6 +118,7 @@ let S = load();
 let draft = null;      // ohjelmanäkymän keskeneräiset valinnat
 let prevPath = null;
 let modalCtx = {};
+let showAllHistory = false;
 
 /* ---------- apufunktiot ---------- */
 
@@ -159,7 +160,8 @@ function workWeight(e) {
 /** Kaikki tehdyt sarjat samalla painolla? Palauttaa painon tai undefined. */
 function uniformWeight(e) {
   const ws = e.sets.filter(s => s.reps != null).map(s => setW(e, s));
-  return ws.length && ws.every(w => w === ws[0]) ? ws[0] : undefined;
+  if (!ws.length) return e.weight;
+  return ws.every(w => w === ws[0]) ? ws[0] : undefined;
 }
 function shortW(kind, w) {
   if (kind === 'nauha' || w == null) return '';
@@ -264,6 +266,9 @@ function startWorkout() {
 function finishWorkout() {
   const a = S.active;
   const items = [];
+  // Painot ennen treeniä, jotta ne voidaan palauttaa, jos treeni poistetaan.
+  const before = {};
+  for (const e of a.entries) if (S.exercises[e.exId]) before[e.exId] = S.exercises[e.exId].weight;
   for (const e of a.entries) {
     const ex = S.exercises[e.exId];
     if (!ex) continue;
@@ -275,7 +280,7 @@ function finishWorkout() {
       S.suggestions.push({ type: 'upgrade', from: ex.id, to: r.upgrade });
     }
   }
-  S.sessions.push({ id: a.id, start: a.start, end: Date.now(), entries: a.entries });
+  S.sessions.push({ id: a.id, start: a.start, end: Date.now(), entries: a.entries, before });
   for (const c of CATS) {
     const p = S.program && S.program[c.id];
     if (c.multi && p) p.rot = (p.rot || 0) + 1;
@@ -371,9 +376,13 @@ function suggestionsHtml() {
 
 function historyHtml() {
   if (!S.sessions.length) return '';
-  const rows = S.sessions.slice(-8).reverse().map(s => `<details><summary>${fmtDate(s.start)} · ${s.entries.length} liikettä · ${fmtTime(s.end - s.start)}</summary>
-    <ul class="plan">${s.entries.map(e => `<li><span>${esc(e.name)} ${dotsHtml(e)}</span><span class="r">${resultText(e)}</span></li>`).join('')}</ul></details>`).join('');
-  return `<div class="card"><h2>Viimeisimmät treenit</h2>${rows}</div>`;
+  const list = showAllHistory ? S.sessions : S.sessions.slice(-8);
+  const rows = list.slice().reverse().map(s => `<details><summary>${fmtDate(s.start)} · ${s.entries.length} liikettä · ${fmtTime(s.end - s.start)}</summary>
+    <ul class="plan">${s.entries.map(e => `<li><span>${esc(e.name)} ${dotsHtml(e)}</span><span class="r">${resultText(e)}</span></li>`).join('')}</ul>
+    <button class="btn danger small" data-act="delSession" data-id="${s.id}">Poista treeni</button></details>`).join('');
+  const more = S.sessions.length > 8
+    ? `<button class="linkbtn" data-act="toggleHistory">${showAllHistory ? 'Näytä vain viimeisimmät' : `Näytä kaikki (${S.sessions.length})`}</button>` : '';
+  return `<div class="card"><h2>${showAllHistory ? 'Kaikki treenit' : 'Viimeisimmät treenit'}</h2>${rows}${more}</div>`;
 }
 
 function initDraft() {
@@ -756,6 +765,32 @@ const ACT = {
   upgNo: el => {
     S.suggestions = S.suggestions.filter(x => !(x.type === 'upgrade' && x.from === el.dataset.from));
     save(); render();
+  },
+
+  // historia
+  toggleHistory: () => { showAllHistory = !showAllHistory; render(); },
+  delSession: el => {
+    const idx = S.sessions.findIndex(x => x.id === el.dataset.id);
+    if (idx < 0) return;
+    const sess = S.sessions[idx];
+    const latest = idx === S.sessions.length - 1;
+    const restore = latest && sess.before;
+    const note = restore
+      ? 'Liikkeiden painot palautetaan treeniä edeltäneisiin.'
+      : 'Liikkeiden painot eivät muutu – tarkista ne tarvittaessa Liikkeet-sivulta.';
+    confirmBox(`Poistetaanko treeni ${fmtDate(sess.start)}? ${note}`, 'Poista', () => {
+      S.sessions.splice(idx, 1);
+      if (restore) {
+        for (const [id, w] of Object.entries(sess.before)) if (S.exercises[id]) S.exercises[id].weight = w;
+      }
+      if (latest) {
+        for (const c of CATS) {
+          const p = S.program && S.program[c.id];
+          if (c.multi && p && p.rot > 0) p.rot -= 1;
+        }
+      }
+      save(); render();
+    }, true);
   },
 
   // treeni
