@@ -2,7 +2,7 @@
 /* Salitreeni – treenien kirjaus ja painojen automaattinen nosto.
    Kaikki tiedot tallennetaan selaimen localStorageen (avain KEY). */
 
-const APP_VERSION = '5';
+const APP_VERSION = '6';
 const KEY = 'salitreeni.v1';
 const CHANGE_AFTER = 6;   // monenko treenin jälkeen ehdotetaan liikkeen vaihtoa
 const SNOOZE = 3;         // "Ei vielä" siirtää ehdotusta näin monta treeniä
@@ -26,18 +26,17 @@ const KINDS = {
 // Toistoalueet: isot liikkeet 8–10, pienet liikkeet 10–16.
 const RANGE_BIG = [8, 10];
 const RANGE_SMALL = [10, 16];
-const SMALL_IDS = ['vipunostot', 'facepull'];
+const SMALL_IDS = ['vipunostot', 'vipunostot_vino', 'facepull'];
 const defaultRange = (id, cat) => (cat === 'pienet' || SMALL_IDS.includes(id)) ? RANGE_SMALL : RANGE_BIG;
 
 // [id, nimi, kategoria, tyyppi, painonlisäys kg, (nauhaliikkeellä) seuraava liike]
 const DEFAULT_EX = [
   ['maastaveto', 'Maastaveto', 'maastaveto', 'paino', 5],
   ['rdl', 'Romanialainen maastaveto', 'maastaveto', 'paino', 5],
+  ['suorinjaloin', 'Maastaveto suorin jaloin', 'maastaveto', 'paino', 5],
   ['trapbar', 'Trap bar -maastaveto', 'maastaveto', 'paino', 5],
-  ['hipthrust', 'Hip thrust', 'maastaveto', 'paino', 5],
   ['hyvaahuomenta', 'Hyvää huomenta', 'maastaveto', 'paino', 2.5],
   ['takakyykky', 'Takakyykky', 'jalat', 'paino', 5],
-  ['etukyykky', 'Etukyykky', 'jalat', 'paino', 2.5],
   ['jalkaprassi', 'Jalkaprässi', 'jalat', 'paino', 5],
   ['bulgarialainen', 'Bulgarialainen kyykky', 'jalat', 'paino', 2],
   ['askelkyykky', 'Askelkyykky', 'jalat', 'paino', 2],
@@ -46,33 +45,49 @@ const DEFAULT_EX = [
   ['ylatalja', 'Ylätalja', 'selka', 'paino', 2.5],
   ['alatalja', 'Alatalja', 'selka', 'paino', 2.5],
   ['kulmasoutu', 'Kulmasoutu tangolla', 'selka', 'paino', 2.5],
-  ['kpsoutu', 'Käsipainosoutu', 'selka', 'paino', 2],
+  ['kpsoutu', 'Kulmasoutu käsipainoilla', 'selka', 'paino', 2],
   ['penkki', 'Penkkipunnerrus', 'rinta', 'paino', 2.5],
   ['vinopenkki', 'Vinopenkki', 'rinta', 'paino', 2.5],
-  ['kppenkki', 'Käsipainopenkki', 'rinta', 'paino', 2],
+  ['kppenkki', 'Penkkipunnerrus käsipainoilla', 'rinta', 'paino', 2],
+  ['kpvinopenkki', 'Vinopenkki käsipainoilla', 'rinta', 'paino', 2],
   ['dipit_nauha', 'Dipit kuminauhalla', 'rinta', 'nauha', 0, 'dipit'],
   ['dipit', 'Dipit', 'rinta', 'keho', 2.5],
   ['pystypunnerrus', 'Pystypunnerrus tangolla', 'olkapaat', 'paino', 2.5],
-  ['kppunnerrus', 'Käsipainopunnerrus istuen', 'olkapaat', 'paino', 2],
-  ['vipunostot', 'Vipunostot sivulle', 'olkapaat', 'paino', 1],
-  ['facepull', 'Face pull', 'olkapaat', 'paino', 2.5],
+  ['kppunnerrus', 'Pystypunnerrus käsipainoilla istuen/seisten', 'olkapaat', 'paino', 2],
+  ['vipunostot', 'Vipunostot suoralla kädellä', 'olkapaat', 'paino', 1],
+  ['vipunostot_vino', 'Vipunostot vinossa', 'olkapaat', 'paino', 1],
   ['hauis_tanko', 'Hauiskääntö tangolla', 'pienet', 'paino', 2.5],
   ['hauis_kp', 'Hauiskääntö käsipainoilla', 'pienet', 'paino', 1],
+  ['hauis_scott', 'Hauiskääntö Scott', 'pienet', 'paino', 2.5],
+  ['hauis_talja', 'Hauiskääntö taljassa', 'pienet', 'paino', 2.5],
   ['ojentaja_talja', 'Ojentajapunnerrus taljassa', 'pienet', 'paino', 2.5],
   ['ranskalainen', 'Ranskalainen punnerrus', 'pienet', 'paino', 2.5],
-  ['pohje', 'Pohjenousu', 'pienet', 'paino', 5],
+  ['pohje', 'Pohjenousu laitteessa', 'pienet', 'paino', 5],
+  ['pohje_yksi', 'Yhden jalan pohjenousu', 'pienet', 'paino', 2],
 ];
+
+// Oletuslistan muutokset versiossa 3.
+const V3_RENAMES = {
+  kppenkki: 'Käsipainopenkki',
+  kppunnerrus: 'Käsipainopunnerrus istuen',
+  vipunostot: 'Vipunostot sivulle',
+  pohje: 'Pohjenousu',
+  kpsoutu: 'Käsipainosoutu',
+};
+const V3_REMOVED = ['hipthrust', 'facepull', 'etukyykky'];
 
 /* ---------- tila ---------- */
 
+function defaultExercise([id, name, cat, kind, inc, upgrade]) {
+  const [repsMin, repsMax] = defaultRange(id, cat);
+  return { id, name, cat, kind, repsMin, repsMax, sets: 3, inc,
+    weight: kind === 'keho' ? 0 : null, upgrade: upgrade || null, hidden: false };
+}
+
 function freshState() {
   const exercises = {};
-  for (const [id, name, cat, kind, inc, upgrade] of DEFAULT_EX) {
-    const [repsMin, repsMax] = defaultRange(id, cat);
-    exercises[id] = { id, name, cat, kind, repsMin, repsMax, sets: 3, inc,
-      weight: kind === 'keho' ? 0 : null, upgrade: upgrade || null, hidden: false };
-  }
-  return { version: 2, exercises, program: null, sessions: [], active: null,
+  for (const row of DEFAULT_EX) exercises[row[0]] = defaultExercise(row);
+  return { version: 3, exercises, program: null, sessions: [], active: null,
     suggestions: [], lastSummary: null, lastBackup: null, created: Date.now() };
 }
 
@@ -94,11 +109,28 @@ function migrate(s) {
     }
     s.version = 2;
   }
+  if (s && s.version === 2) {
+    // Oletusliikkeiden päivitys. Käyttäjän itse muuttamia nimiä ei kosketa.
+    const ex = s.exercises;
+    for (const [id, oldName] of Object.entries(V3_RENAMES)) {
+      const row = DEFAULT_EX.find(r => r[0] === id);
+      if (ex[id] && ex[id].name === oldName) ex[id].name = row[1];
+    }
+    for (const row of DEFAULT_EX) if (!ex[row[0]]) ex[row[0]] = defaultExercise(row);
+    const used = id => s.sessions.some(se => se.entries.some(e => e.exId === id))
+      || (s.active && s.active.entries.some(e => e.exId === id))
+      || Object.values(s.program || {}).some(p => p.ids.includes(id));
+    for (const id of V3_REMOVED) {
+      if (!ex[id]) continue;
+      if (used(id)) ex[id].hidden = true; else delete ex[id];
+    }
+    s.version = 3;
+  }
   return s;
 }
 
 function validState(s) {
-  return s && s.version === 2 && s.exercises && typeof s.exercises === 'object' && Array.isArray(s.sessions);
+  return s && s.version === 3 && s.exercises && typeof s.exercises === 'object' && Array.isArray(s.sessions);
 }
 
 function load() {

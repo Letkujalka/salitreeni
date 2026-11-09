@@ -20,7 +20,7 @@ sovellus avataan seuraavan kerran julkaisun jälkeen.
   ja ne ovat aina viimeisinä.
 - **Ensimmäinen kerta:** valitaan liikkeet ja syötetään aloituspainot.
 - **Toistoalueet:** isot liikkeet 8–10 toistoa, pikkulihakset (sekä
-  vipunostot ja face pull) 10–16. Alueen voi muuttaa liikekohtaisesti.
+  vipunostot) 10–16. Alueen voi muuttaa liikekohtaisesti.
 - **Sarjan minimi:** alussa ja aina painon nousun jälkeen jokaisen sarjan
   minimi on alueen alaraja (esim. 8 / 8 / 8). Muuten edellisen kerran
   tulos on uusi minimi: jos edellisellä kerralla tuli 9 / 9 / 8, rajat ovat
@@ -84,6 +84,7 @@ Settings → Pages → Source: **GitHub Actions**.
 
 | Versio | Muutokset |
 |---|---|
+| 6 | Oletusliikkeiden päivitys: poistettu hip thrust, face pull ja etukyykky; lisätty maastaveto suorin jaloin, vinopenkki käsipainoilla, vipunostot vinossa, yhden jalan pohjenousu, hauiskääntö Scott ja taljassa; nimet tarkennettu (penkkipunnerrus käsipainoilla, pystypunnerrus käsipainoilla istuen/seisten, vipunostot suoralla kädellä, pohjenousu laitteessa, kulmasoutu käsipainoilla). Käytössä olleet poistetut liikkeet piilotetaan, jotta historia säilyy. |
 | 5 | Treenin poisto historiasta (viimeisimmän poisto palauttaa painot), koko historian näyttö. |
 | 4 | Toistoalueet (8–10 / 10–16) ja sarjakohtaiset minimit edellisen kerran tuloksista. Napautus kirjaa minimin ja lisää toistoja yksi kerrallaan, pitkä painallus avaa valitsimen. Paino nousee, kun kaikki sarjat menevät maksimiin, ja laskee, jos sarja jää alle alueen. Vanhat tiedot muunnetaan automaattisesti. |
 | 3 | Sarjakohtainen paino: sarjaruudussa näkyy toistojen lisäksi paino, jolla sarja tehtiin. Painon voi vaihtaa sarjojen välissä, ja jo tehdyn sarjan painoa voi korjata napauttamalla ruutua. Progressio laskee seuraavan painon viimeisen sarjan painosta. |
