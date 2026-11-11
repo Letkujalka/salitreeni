@@ -14,13 +14,17 @@ sovellus avataan seuraavan kerran julkaisun jälkeen.
 
 ## Toiminta
 
-- **Kategoriat:** maastavetotyyppiset, jalat, selkä, rinta, olkapäät ja
-  pikkulihakset. Ohjelmaan valitaan yksi liike per kategoria. Pikkulihaksiin
-  voi valita useita liikkeitä, jolloin niitä tehdään treeneissä vuorotellen
-  ja ne ovat aina viimeisinä.
+- **Kategoriat:** maastavetotyyppiset, jalat, selkä, rinta, olkapäät, vatsat
+  ja pikkulihakset. Ohjelmaan valitaan liike per kategoria (pikkulihaksiin
+  useita).
+- **Seuraava treeni = toteutunut treeni:** treenin jälkeen seuraava treeni
+  rakentuu edellisen treenin liikkeistä ja järjestyksestä. Treenin aikana
+  vaihdettu tai lisätty liike tulee seuraavaan mukaan, väliin jätetty liike
+  pysyy mukana, ja treenistä poistettu liike putoaa pois. Ohjelma-sivun
+  muutokset ja liikkeiden vaihtoehdotukset päivittyvät seuraavaan treeniin.
 - **Ensimmäinen kerta:** valitaan liikkeet ja syötetään aloituspainot.
 - **Toistoalueet:** isot liikkeet 8–10 toistoa, pikkulihakset (sekä
-  vipunostot) 10–16. Alueen voi muuttaa liikekohtaisesti.
+  vipunostot) sekä vatsat 10–16. Alueen voi muuttaa liikekohtaisesti.
 - **Sarjan minimi:** alussa ja aina painon nousun jälkeen jokaisen sarjan
   minimi on alueen alaraja (esim. 8 / 8 / 8). Muuten edellisen kerran
   tulos on uusi minimi: jos edellisellä kerralla tuli 9 / 9 / 8, rajat ovat
@@ -35,6 +39,12 @@ sovellus avataan seuraavan kerran julkaisun jälkeen.
     ulkopuolelta), sarjan paino tai sarjan tyhjennys.
   - Jokaiseen sarjaan tallentuu paino, jolla se tehtiin, joten painoa voi
     vaihtaa kesken liikkeen. Näyttö pysyy päällä treenin ajan.
+- **Palaute:** kun liikkeen kaikki sarjat on tehty, ajastin pysähtyy ja
+  kortissa kerrotaan tulos: "Tavoite täynnä! Ensi kerralla 65 kg 💪"
+  (ja juhlavärinä), "+2 toistoa edelliseen", "Pidit tason" tai
+  "Ensi kerralla kevyemmällä". Yhteenvedossa näkyy kooste (missä paino
+  nousee, missä toistoja tuli enemmän) ja uudet ennätykset. Ennätys on
+  suurin paino, jolla kaikki sarjat on tehty vähintään alueen minimiin.
 - **Värit:** vihreä = sarjan minimi saavutettu (★ = alueen maksimi),
   keltainen = jäi alle minimin, punainen = sarjaa ei tehty.
 - **Painojen nousu ja lasku** (viimeisen sarjan painosta):
@@ -84,6 +94,7 @@ Settings → Pages → Source: **GitHub Actions**.
 
 | Versio | Muutokset |
 |---|---|
+| 9 | Seuraava treeni rakentuu toteutuneesta treenistä (liikkeet ja järjestys, myös pikkulihakset). Palaute liikkeen valmistuttua, yhteenvedon kooste ja ennätykset. Uusi kategoria Vatsat. |
 | 8 | Liikkeen ajastin pysähtyy, kun kaikki sarjat on tehty (tilalla ✓ Valmis). |
 | 7 | Pystypunnerrus käsipainoilla jaettu istuen- ja seisten-versioiksi (entinen liike ja sen historia jäävät istuen-versiolle). |
 | 6 | Oletusliikkeiden päivitys: poistettu hip thrust, face pull ja etukyykky; lisätty maastaveto suorin jaloin, vinopenkki käsipainoilla, vipunostot vinossa, yhden jalan pohjenousu, hauiskääntö Scott ja taljassa; nimet tarkennettu (penkkipunnerrus käsipainoilla, pystypunnerrus käsipainoilla istuen/seisten, vipunostot suoralla kädellä, pohjenousu laitteessa, kulmasoutu käsipainoilla). Käytössä olleet poistetut liikkeet piilotetaan, jotta historia säilyy. |

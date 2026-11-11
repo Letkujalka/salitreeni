@@ -127,6 +127,12 @@ label.chk input { width: auto; margin: 0; }
 .set.ok { background: var(--ok); border: 2px solid var(--ok); }
 .set.part { background: var(--part); border: 2px solid var(--part); color: #222; }
 .set.miss { background: var(--miss); border: 2px solid var(--miss); }
+.fb { margin: 10px 0 0; padding: 8px 10px; border-radius: 10px; background: var(--card2); font-weight: 600; }
+.fb.great { background: rgba(47,167,90,.18); color: #7ee2a0; }
+.fb.pop { animation: pop .5s ease-out; }
+.fb.good { color: #7ee2a0; }
+.fb.meh { color: var(--part); }
+@keyframes pop { 0% { transform: scale(.9); opacity: 0; } 60% { transform: scale(1.04); opacity: 1; } 100% { transform: scale(1); } }
 .prev { color: var(--muted); font-size: .85rem; margin: 8px 0 0; }
 
 /* Yhteenveto */

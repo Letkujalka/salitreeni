@@ -2,7 +2,7 @@
 /* Salitreeni – treenien kirjaus ja painojen automaattinen nosto.
    Kaikki tiedot tallennetaan selaimen localStorageen (avain KEY). */
 
-const APP_VERSION = '8';
+const APP_VERSION = '9';
 const KEY = 'salitreeni.v1';
 const CHANGE_AFTER = 6;   // monenko treenin jälkeen ehdotetaan liikkeen vaihtoa
 const SNOOZE = 3;         // "Ei vielä" siirtää ehdotusta näin monta treeniä
@@ -14,6 +14,7 @@ const CATS = [
   { id: 'selka', name: 'Selkä' },
   { id: 'rinta', name: 'Rinta' },
   { id: 'olkapaat', name: 'Olkapäät' },
+  { id: 'vatsat', name: 'Vatsat' },
   { id: 'pienet', name: 'Pikkulihakset', multi: true },
 ];
 const CAT = Object.fromEntries(CATS.map(c => [c.id, c]));
@@ -27,7 +28,7 @@ const KINDS = {
 const RANGE_BIG = [8, 10];
 const RANGE_SMALL = [10, 16];
 const SMALL_IDS = ['vipunostot', 'vipunostot_vino', 'facepull'];
-const defaultRange = (id, cat) => (cat === 'pienet' || SMALL_IDS.includes(id)) ? RANGE_SMALL : RANGE_BIG;
+const defaultRange = (id, cat) => (cat === 'pienet' || cat === 'vatsat' || SMALL_IDS.includes(id)) ? RANGE_SMALL : RANGE_BIG;
 
 // [id, nimi, kategoria, tyyppi, painonlisäys kg, (nauhaliikkeellä) seuraava liike]
 const DEFAULT_EX = [
@@ -57,6 +58,12 @@ const DEFAULT_EX = [
   ['kppunnerrus_seisten', 'Pystypunnerrus käsipainoilla seisten', 'olkapaat', 'paino', 2],
   ['vipunostot', 'Vipunostot suoralla kädellä', 'olkapaat', 'paino', 1],
   ['vipunostot_vino', 'Vipunostot vinossa', 'olkapaat', 'paino', 1],
+  ['vatsa_laite', 'Vatsarutistus laitteessa', 'vatsat', 'paino', 2.5],
+  ['vatsa_talja', 'Vatsarutistus taljassa', 'vatsat', 'paino', 2.5],
+  ['jalannosto_roikkuen', 'Jalannosto roikkuen', 'vatsat', 'keho', 2],
+  ['jalannosto_teline', 'Jalannosto dippitelineessä', 'vatsat', 'keho', 2],
+  ['vatsarulla', 'Vatsarulla', 'vatsat', 'keho', 0],
+  ['sivutaivutus', 'Sivutaivutus käsipainolla', 'vatsat', 'paino', 2],
   ['hauis_tanko', 'Hauiskääntö tangolla', 'pienet', 'paino', 2.5],
   ['hauis_kp', 'Hauiskääntö käsipainoilla', 'pienet', 'paino', 1],
   ['hauis_scott', 'Hauiskääntö Scott', 'pienet', 'paino', 2.5],
@@ -88,7 +95,7 @@ function defaultExercise([id, name, cat, kind, inc, upgrade]) {
 function freshState() {
   const exercises = {};
   for (const row of DEFAULT_EX) exercises[row[0]] = defaultExercise(row);
-  return { version: 4, exercises, program: null, sessions: [], active: null,
+  return { version: 5, exercises, program: null, sessions: [], active: null,
     suggestions: [], lastSummary: null, lastBackup: null, created: Date.now() };
 }
 
@@ -136,11 +143,16 @@ function migrate(s) {
     for (const row of DEFAULT_EX) if (!ex[row[0]]) ex[row[0]] = defaultExercise(row);
     s.version = 4;
   }
+  if (s && s.version === 4) {
+    // Uusi kategoria Vatsat.
+    for (const row of DEFAULT_EX) if (!s.exercises[row[0]]) s.exercises[row[0]] = defaultExercise(row);
+    s.version = 5;
+  }
   return s;
 }
 
 function validState(s) {
-  return s && s.version === 4 && s.exercises && typeof s.exercises === 'object' && Array.isArray(s.sessions);
+  return s && s.version === 5 && s.exercises && typeof s.exercises === 'object' && Array.isArray(s.sessions);
 }
 
 function load() {
@@ -161,6 +173,7 @@ let draft = null;      // ohjelmanäkymän keskeneräiset valinnat
 let prevPath = null;
 let modalCtx = {};
 let showAllHistory = false;
+let popId = null;      // liike, jonka tavoite täyttyi juuri nyt (animaatio)
 
 /* ---------- apufunktiot ---------- */
 
@@ -289,14 +302,82 @@ function makeEntry(exId) {
     sets: Array.from({ length: ex.sets || 3 }, () => ({ reps: null, t: null })) };
 }
 
+/**
+ * Seuraavan treenin liikkeet. Treenin jälkeen S.nextPlan on toteutunut treeni
+ * (liikkeet ja järjestys); ennen ensimmäistä treeniä ohjelma kategoriajärjestyksessä.
+ */
+const sumReps = sets => sets.reduce((a, s) => a + (s.reps || 0), 0);
+
+/** Toistojen muutos edelliseen, jos kaikki sarjat tehtiin samalla painolla kuin viimeksi. */
+function repsDiff(e) {
+  const p = e.prev || [];
+  if (!p.length) return null;
+  const cur = uniformWeight(e);
+  if (cur === undefined) return null;
+  const pw = p.filter(s => s.reps != null).map(s => s.w);
+  if (!pw.length || pw.some(w => w !== cur)) return null;
+  return sumReps(e.sets) - sumReps(p);
+}
+
+/** Paino, jolla kaikki sarjat tehtiin vähintään alueen minimiin (ennätyksiä varten). */
+function qualWeight(e) {
+  if (e.kind === 'nauha' || !e.sets.length) return null;
+  const lo = e.repsMin != null ? e.repsMin : e.reps;
+  if (e.sets.some(s => s.reps == null || s.reps < lo)) return null;
+  const ws = e.sets.map(s => setW(e, s));
+  return ws.some(w => w == null) ? null : Math.min(...ws);
+}
+
+/** Palauteteksti liikkeen kortissa, kun kaikki sarjat on tehty. */
+function entryFeedback(e) {
+  const ex = S.exercises[e.exId];
+  if (!ex) return null;
+  const r = evaluate(e, ex);
+  if (r.result === 'skip') return null;
+  if (r.result === 'up') return { cls: 'great', txt: `Tavoite täynnä! Ensi kerralla ${weightLabel(e.kind, r.next)} 💪` };
+  if (r.result === 'success') return { cls: 'great', txt: r.upgrade ? `Tavoite täynnä! Seuraavaksi ${esc(exName(r.upgrade))} 💪` : 'Tavoite täynnä! 💪' };
+  if (r.result === 'down') return { cls: 'meh', txt: `Ensi kerralla kevyemmällä: ${weightLabel(e.kind, r.next)}` };
+  const d = repsDiff(e);
+  if (d == null) return { cls: '', txt: 'Liike tehty 👍' };
+  if (d > 0) return { cls: 'good', txt: `+${d} toistoa edelliseen 👍` };
+  if (d === 0) return { cls: '', txt: 'Pidit tason' };
+  return { cls: 'meh', txt: `${-d} toistoa vähemmän kuin viimeksi` };
+}
+const isGreat = e => e.sets.every(s => s.reps != null) && ['up', 'success'].includes(S.exercises[e.exId] && evaluate(e, S.exercises[e.exId]).result);
+
 function plannedIds() {
+  if (S.nextPlan) return S.nextPlan.filter(id => S.exercises[id]);
   const ids = [];
   for (const c of CATS) {
     const p = S.program && S.program[c.id];
-    if (!p || !p.ids.length) continue;
-    ids.push(c.multi ? p.ids[(p.rot || 0) % p.ids.length] : p.ids[0]);
+    if (p) ids.push(...p.ids);
   }
   return ids.filter(id => S.exercises[id]);
+}
+
+/** Ohjelman muutos (Ohjelma-sivu, vaihtoehdotus) päivitetään seuraavaan treeniin. */
+function syncPlanWithProgram() {
+  if (!S.nextPlan) return;
+  const catIdx = id => CATS.findIndex(c => S.exercises[id] && c.id === S.exercises[id].cat);
+  const plan = [];
+  const add = id => { if (!plan.includes(id)) plan.push(id); };
+  for (const id of S.nextPlan) {
+    const x = S.exercises[id];
+    const p = x && S.program[x.cat];
+    if (!p) continue;                        // kategoria poistettu ohjelmasta
+    if (p.ids.includes(id)) add(id);
+    else p.ids.forEach(add);                 // korvattu: uudet liikkeet samalle paikalle
+  }
+  for (const c of CATS) {                    // ohjelmaan lisätyt kategoriat
+    const p = S.program[c.id];
+    if (!p) continue;
+    for (const id of p.ids) {
+      if (plan.includes(id) || !S.exercises[id]) continue;
+      const k = plan.findIndex(x => catIdx(x) > catIdx(id));
+      plan.splice(k < 0 ? plan.length : k, 0, id);
+    }
+  }
+  S.nextPlan = plan;
 }
 
 function startWorkout() {
@@ -315,17 +396,32 @@ function finishWorkout() {
     const ex = S.exercises[e.exId];
     if (!ex) continue;
     const r = evaluate(e, ex);
+    const qw = qualWeight(e);
+    let best = null;
+    for (const se of S.sessions) for (const pe of se.entries) {
+      if (pe.exId !== e.exId) continue;
+      const w = qualWeight(pe);
+      if (w != null && (best == null || w > best)) best = w;
+    }
+    const d = repsDiff(e);
     items.push({ name: e.name, kind: e.kind, from: workWeight(e), to: r.next, result: r.result,
-      upgrade: r.upgrade, sets: e.sets, repsMin: e.repsMin, repsMax: e.repsMax, weight: e.weight });
+      upgrade: r.upgrade, sets: e.sets, repsMin: e.repsMin, repsMax: e.repsMax, weight: e.weight,
+      improved: d != null && d > 0, pr: qw != null && best != null && qw > best ? qw : null });
     if (e.kind !== 'nauha') ex.weight = r.next;
     if (r.upgrade && !S.suggestions.some(s => s.type === 'upgrade' && s.from === ex.id)) {
       S.suggestions.push({ type: 'upgrade', from: ex.id, to: r.upgrade });
     }
   }
-  S.sessions.push({ id: a.id, start: a.start, end: Date.now(), entries: a.entries, before });
+  S.sessions.push({ id: a.id, start: a.start, end: Date.now(), entries: a.entries, before,
+    planBefore: S.nextPlan ? [...S.nextPlan] : null, programBefore: JSON.parse(JSON.stringify(S.program || {})) });
+  // Seuraava treeni = toteutunut treeni (liikkeet ja järjestys).
+  const plan = [];
+  for (const e of a.entries) if (S.exercises[e.exId] && !plan.includes(e.exId)) plan.push(e.exId);
+  S.nextPlan = plan;
+  S.program = S.program || {};
   for (const c of CATS) {
-    const p = S.program && S.program[c.id];
-    if (c.multi && p) p.rot = (p.rot || 0) + 1;
+    const ids = plan.filter(id => S.exercises[id].cat === c.id);
+    if (ids.length) setProgramIds(c.id, ids); else delete S.program[c.id];
   }
   S.lastSummary = { start: a.start, end: Date.now(), items };
   S.active = null;
@@ -437,7 +533,7 @@ function viewProgram() {
   if (prevPath !== '/ohjelma' || !draft) draft = initDraft();
   let h = header('Ohjelma');
   h += `<p class="hint">Valitse jokaisesta kategoriasta liike ja syötä aloituspaino. Toistoalue on valmiina (isot liikkeet 8–10, pienet 10–16).
-    Pikkulihaksista voi valita useita – niitä tehdään treeneissä vuorotellen.</p>`;
+    Pikkulihaksista voi valita useita. Treenin jälkeen seuraava treeni rakentuu aina toteutuneen treenin liikkeistä ja järjestyksestä.</p>`;
   for (const c of CATS) {
     h += `<section class="cat" id="k-${c.id}"><h2>${c.name}</h2>`;
     for (const x of visibleEx(c.id)) {
@@ -477,6 +573,7 @@ function cardHtml(e, i, n) {
   const ex = S.exercises[e.exId];
   const inc = ex && e.kind !== 'nauha' ? ex.inc : 0;
   const done = e.sets.every(s => s.reps != null);
+  const fb = done ? entryFeedback(e) : null;
   return `<div class="card ex ${done ? 'done' : ''}">
     <div class="ex-head">
       <div class="ex-title"><b>${esc(e.name)}</b><small>${CAT[e.cat] ? CAT[e.cat].name : ''} · ${rangeText(e)}</small></div>
@@ -493,6 +590,7 @@ function cardHtml(e, i, n) {
     <div class="sets">${e.sets.map((s, j) => s.reps == null
       ? `<button class="set" data-act="set" data-i="${i}" data-j="${j}"><span class="ghost">${setTarget(e, j, e.weight)}</span></button>`
       : `<button class="set ${setClass(s, doneTarget(e, s))}" data-act="set" data-i="${i}" data-j="${j}">${s.reps}${s.reps >= e.repsMax ? '<sup>★</sup>' : ''}<small>${shortW(e.kind, setW(e, s))}</small></button>`).join('')}</div>
+    ${fb ? `<p class="fb ${fb.cls}${popId === e.id ? ' pop' : ''}">${fb.txt}</p>` : ''}
     ${prev ? `<p class="prev">Edellinen: ${resultText(prev)}</p>` : ''}
   </div>`;
 }
@@ -501,6 +599,14 @@ function viewSummary() {
   const sm = S.lastSummary;
   if (!sm) { setTimeout(() => go('#/'), 0); return ''; }
   let h = header('Treeni tehty', '');
+  const ups = sm.items.filter(it => it.result === 'up' || (it.kind === 'nauha' && it.result === 'success')).length;
+  const better = sm.items.filter(it => it.improved).length;
+  const prs = sm.items.filter(it => it.pr != null);
+  const lines = [];
+  if (ups) lines.push(`💪 Paino nousee ${ups} liikkeessä`);
+  if (better) lines.push(`📈 Toistoja enemmän kuin viimeksi ${better} liikkeessä`);
+  for (const it of prs) lines.push(`🏆 Uusi ennätys: ${esc(it.name)} ${weightLabel(it.kind, it.pr)}`);
+  if (lines.length) h += `<div class="card sugg">${lines.map(l => `<p>${l}</p>`).join('')}</div>`;
   h += `<div class="card"><p>${fmtDate(sm.start)} · kesto ${fmtTime(sm.end - sm.start)}</p>`;
   for (const it of sm.items) {
     let txt;
@@ -567,6 +673,7 @@ function render() {
     if (target) target.scrollIntoView(); else window.scrollTo(0, 0);
   }
   prevPath = path;
+  popId = null;
   tick();
   keepAwake(!!S.active && path === '/treeni');
 }
@@ -747,6 +854,7 @@ const ACT = {
     for (const c of CATS) {
       if (draft[c.id].length) setProgramIds(c.id, draft[c.id]); else delete S.program[c.id];
     }
+    syncPlanWithProgram();
     draft = null;
     save();
     go('#/');
@@ -782,6 +890,7 @@ const ACT = {
   chgYes: el => {
     const { cat, id } = el.dataset;
     setProgramIds(cat, [id]);
+    syncPlanWithProgram();
     save(); render();
     const x = S.exercises[id];
     if (x.kind === 'paino' && x.weight == null) {
@@ -800,6 +909,7 @@ const ACT = {
       const p = S.program[c.id];
       if (p) p.ids = p.ids.map(id => id === s.from ? s.to : id);
     }
+    if (S.nextPlan) S.nextPlan = S.nextPlan.map(id => id === s.from ? s.to : id);
     const to = S.exercises[s.to];
     if (to.weight == null) to.weight = 0;
     S.suggestions = S.suggestions.filter(x => x !== s);
@@ -819,18 +929,16 @@ const ACT = {
     const latest = idx === S.sessions.length - 1;
     const restore = latest && sess.before;
     const note = restore
-      ? 'Liikkeiden painot palautetaan treeniä edeltäneisiin.'
+      ? 'Liikkeiden painot ja seuraavan treenin liikkeet palautetaan treeniä edeltäneisiin.'
       : 'Liikkeiden painot eivät muutu – tarkista ne tarvittaessa Liikkeet-sivulta.';
     confirmBox(`Poistetaanko treeni ${fmtDate(sess.start)}? ${note}`, 'Poista', () => {
       S.sessions.splice(idx, 1);
       if (restore) {
         for (const [id, w] of Object.entries(sess.before)) if (S.exercises[id]) S.exercises[id].weight = w;
       }
-      if (latest) {
-        for (const c of CATS) {
-          const p = S.program && S.program[c.id];
-          if (c.multi && p && p.rot > 0) p.rot -= 1;
-        }
+      if (latest && sess.programBefore) {
+        S.program = sess.programBefore;
+        S.nextPlan = sess.planBefore;
       }
       save(); render();
     }, true);
@@ -843,6 +951,7 @@ const ACT = {
     if (lpFired) { lpFired = false; return; }
     const e = entry(el), j = Number(el.dataset.j);
     const s = e.sets[j];
+    const wasGreat = isGreat(e);
     if (s.reps == null) {
       const k = e.sets.findIndex(x => x.reps == null);
       const w = e.kind === 'nauha' ? null : e.weight;
@@ -853,6 +962,7 @@ const ACT = {
       s.reps = s.reps >= e.repsMax ? e.repsMin : s.reps + 1;
       buzz(15);
     }
+    if (!wasGreat && isGreat(e)) { buzz([90, 60, 90, 60, 200]); popId = e.id; }
     save(); render();
   },
   repsPick: el => {
