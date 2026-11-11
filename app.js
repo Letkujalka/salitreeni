@@ -2,7 +2,7 @@
 /* Salitreeni – treenien kirjaus ja painojen automaattinen nosto.
    Kaikki tiedot tallennetaan selaimen localStorageen (avain KEY). */
 
-const APP_VERSION = '7';
+const APP_VERSION = '8';
 const KEY = 'salitreeni.v1';
 const CHANGE_AFTER = 6;   // monenko treenin jälkeen ehdotetaan liikkeen vaihtoa
 const SNOOZE = 3;         // "Ei vielä" siirtää ehdotusta näin monta treeniä
@@ -487,7 +487,8 @@ function cardHtml(e, i, n) {
         ${inc ? `<button data-act="wminus" data-i="${i}">−</button>` : ''}
         <button class="w" data-act="wedit" data-i="${i}">${weightLabel(e.kind, e.weight)}</button>
         ${inc ? `<button data-act="wplus" data-i="${i}">+</button>` : ''}</div>`}
-      <span class="timer ${last ? '' : 'idle'}" ${last ? `data-since="${last}"` : ''}>${last ? '' : '–:––'}</span>
+      ${done ? '<span class="timer finished">✓ Valmis</span>'
+        : `<span class="timer ${last ? '' : 'idle'}" ${last ? `data-since="${last}"` : ''}>${last ? '' : '–:––'}</span>`}
     </div>
     <div class="sets">${e.sets.map((s, j) => s.reps == null
       ? `<button class="set" data-act="set" data-i="${i}" data-j="${j}"><span class="ghost">${setTarget(e, j, e.weight)}</span></button>`

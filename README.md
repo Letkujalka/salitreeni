@@ -84,6 +84,7 @@ Settings → Pages → Source: **GitHub Actions**.
 
 | Versio | Muutokset |
 |---|---|
+| 8 | Liikkeen ajastin pysähtyy, kun kaikki sarjat on tehty (tilalla ✓ Valmis). |
 | 7 | Pystypunnerrus käsipainoilla jaettu istuen- ja seisten-versioiksi (entinen liike ja sen historia jäävät istuen-versiolle). |
 | 6 | Oletusliikkeiden päivitys: poistettu hip thrust, face pull ja etukyykky; lisätty maastaveto suorin jaloin, vinopenkki käsipainoilla, vipunostot vinossa, yhden jalan pohjenousu, hauiskääntö Scott ja taljassa; nimet tarkennettu (penkkipunnerrus käsipainoilla, pystypunnerrus käsipainoilla istuen/seisten, vipunostot suoralla kädellä, pohjenousu laitteessa, kulmasoutu käsipainoilla). Käytössä olleet poistetut liikkeet piilotetaan, jotta historia säilyy. |
 | 5 | Treenin poisto historiasta (viimeisimmän poisto palauttaa painot), koko historian näyttö. |

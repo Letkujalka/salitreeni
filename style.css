@@ -113,6 +113,7 @@ label.chk input { width: auto; margin: 0; }
 }
 .weight .w { min-width: 100px; font-weight: 700; font-size: 1.1rem; }
 .timer { font-size: 1.6rem; font-weight: 700; font-variant-numeric: tabular-nums; }
+.timer.finished { color: var(--ok); font-size: 1.2rem; }
 .timer.idle { color: var(--muted); font-weight: 400; }
 .sets { display: grid; grid-template-columns: repeat(auto-fit, minmax(56px, 1fr)); gap: 8px; }
 .set {
