@@ -94,6 +94,7 @@ Settings → Pages → Source: **GitHub Actions**.
 
 | Versio | Muutokset |
 |---|---|
+| 10 | Vatsaliikkeet: lisätty sit-up perus, tuettuna ja vino sekä kääntö taljassa; jalannosto dippitelineessä → jalannosto maaten; poistettu vatsarutistukset ja sivutaivutus. |
 | 9 | Seuraava treeni rakentuu toteutuneesta treenistä (liikkeet ja järjestys, myös pikkulihakset). Palaute liikkeen valmistuttua, yhteenvedon kooste ja ennätykset. Uusi kategoria Vatsat. |
 | 8 | Liikkeen ajastin pysähtyy, kun kaikki sarjat on tehty (tilalla ✓ Valmis). |
 | 7 | Pystypunnerrus käsipainoilla jaettu istuen- ja seisten-versioiksi (entinen liike ja sen historia jäävät istuen-versiolle). |

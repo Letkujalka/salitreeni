@@ -1,6 +1,6 @@
 // Välimuisti, jotta sovellus toimii salilla ilman verkkoyhteyttä.
 // Päivitys: kasvata CACHE-numeroa, kun tiedostot muuttuvat.
-const CACHE = 'salitreeni-9';
+const CACHE = 'salitreeni-10';
 const FILES = ['./', './index.html', './style.css', './app.js', './manifest.webmanifest',
   './icons/icon-192.png', './icons/icon-512.png', './icons/icon-maskable-512.png'];
 

@@ -2,7 +2,7 @@
 /* Salitreeni – treenien kirjaus ja painojen automaattinen nosto.
    Kaikki tiedot tallennetaan selaimen localStorageen (avain KEY). */
 
-const APP_VERSION = '9';
+const APP_VERSION = '10';
 const KEY = 'salitreeni.v1';
 const CHANGE_AFTER = 6;   // monenko treenin jälkeen ehdotetaan liikkeen vaihtoa
 const SNOOZE = 3;         // "Ei vielä" siirtää ehdotusta näin monta treeniä
@@ -58,12 +58,13 @@ const DEFAULT_EX = [
   ['kppunnerrus_seisten', 'Pystypunnerrus käsipainoilla seisten', 'olkapaat', 'paino', 2],
   ['vipunostot', 'Vipunostot suoralla kädellä', 'olkapaat', 'paino', 1],
   ['vipunostot_vino', 'Vipunostot vinossa', 'olkapaat', 'paino', 1],
-  ['vatsa_laite', 'Vatsarutistus laitteessa', 'vatsat', 'paino', 2.5],
-  ['vatsa_talja', 'Vatsarutistus taljassa', 'vatsat', 'paino', 2.5],
+  ['situp', 'Sit-up perus', 'vatsat', 'keho', 2],
+  ['situp_tuettu', 'Sit-up tuettuna', 'vatsat', 'keho', 2],
+  ['situp_vino', 'Sit-up vino', 'vatsat', 'keho', 2],
   ['jalannosto_roikkuen', 'Jalannosto roikkuen', 'vatsat', 'keho', 2],
-  ['jalannosto_teline', 'Jalannosto dippitelineessä', 'vatsat', 'keho', 2],
+  ['jalannosto_teline', 'Jalannosto maaten', 'vatsat', 'keho', 2],
   ['vatsarulla', 'Vatsarulla', 'vatsat', 'keho', 0],
-  ['sivutaivutus', 'Sivutaivutus käsipainolla', 'vatsat', 'paino', 2],
+  ['kaanto_talja', 'Kääntö taljassa', 'vatsat', 'paino', 2.5],
   ['hauis_tanko', 'Hauiskääntö tangolla', 'pienet', 'paino', 2.5],
   ['hauis_kp', 'Hauiskääntö käsipainoilla', 'pienet', 'paino', 1],
   ['hauis_scott', 'Hauiskääntö Scott', 'pienet', 'paino', 2.5],
@@ -95,8 +96,30 @@ function defaultExercise([id, name, cat, kind, inc, upgrade]) {
 function freshState() {
   const exercises = {};
   for (const row of DEFAULT_EX) exercises[row[0]] = defaultExercise(row);
-  return { version: 5, exercises, program: null, sessions: [], active: null,
+  return { version: 6, exercises, program: null, sessions: [], active: null,
     suggestions: [], lastSummary: null, lastBackup: null, created: Date.now() };
+}
+
+/**
+ * Oletuslistan päivitys olemassa olevaan tilaan: nimeää uudelleen (jos käyttäjä
+ * ei ole muuttanut nimeä), lisää puuttuvat oletusliikkeet ja poistaa annetut
+ * liikkeet – käytössä olleet vain piilotetaan, jotta historia säilyy.
+ */
+function updateDefaults(s, renames, removed) {
+  const ex = s.exercises;
+  for (const [id, oldName] of Object.entries(renames)) {
+    const row = DEFAULT_EX.find(r => r[0] === id);
+    if (row && ex[id] && ex[id].name === oldName) ex[id].name = row[1];
+  }
+  for (const row of DEFAULT_EX) if (!ex[row[0]]) ex[row[0]] = defaultExercise(row);
+  const used = id => s.sessions.some(se => se.entries.some(e => e.exId === id))
+    || (s.active && s.active.entries.some(e => e.exId === id))
+    || Object.values(s.program || {}).some(p => p.ids.includes(id))
+    || (s.nextPlan || []).includes(id);
+  for (const id of removed) {
+    if (!ex[id]) continue;
+    if (used(id)) ex[id].hidden = true; else delete ex[id];
+  }
 }
 
 /** Versio 1 -> 2: yksittäinen tavoitetoistomäärä muuttui toistoalueeksi. */
@@ -148,11 +171,17 @@ function migrate(s) {
     for (const row of DEFAULT_EX) if (!s.exercises[row[0]]) s.exercises[row[0]] = defaultExercise(row);
     s.version = 5;
   }
+  if (s && s.version === 5) {
+    // Vatsaliikkeiden päivitys.
+    updateDefaults(s, { jalannosto_teline: 'Jalannosto dippitelineessä' },
+      ['vatsa_laite', 'vatsa_talja', 'sivutaivutus']);
+    s.version = 6;
+  }
   return s;
 }
 
 function validState(s) {
-  return s && s.version === 5 && s.exercises && typeof s.exercises === 'object' && Array.isArray(s.sessions);
+  return s && s.version === 6 && s.exercises && typeof s.exercises === 'object' && Array.isArray(s.sessions);
 }
 
 function load() {
