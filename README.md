@@ -39,6 +39,12 @@ sovellus avataan seuraavan kerran julkaisun jälkeen.
     ulkopuolelta), sarjan paino tai sarjan tyhjennys.
   - Jokaiseen sarjaan tallentuu paino, jolla se tehtiin, joten painoa voi
     vaihtaa kesken liikkeen. Näyttö pysyy päällä treenin ajan.
+- **Treenipohjat:** hyväksi havaitun treenin (liikkeet ja järjestys) voi
+  tallentaa pohjaksi etusivun "Seuraava treeni" -kortista tai treenin
+  yhteenvedosta. Pohjat näkyvät etusivulla: pohjalla voi aloittaa treenin
+  heti tai ottaa sen seuraavaksi treeniksi. Pohjan voi myös päivittää,
+  nimetä uudelleen ja poistaa. Painot tulevat aina liikkeiden omasta
+  progressiosta, joten pohja ei vanhene.
 - **Palaute:** kun liikkeen kaikki sarjat on tehty, ajastin pysähtyy ja
   kortissa kerrotaan tulos: "Tavoite täynnä! Ensi kerralla 65 kg 💪"
   (ja juhlavärinä), "+2 toistoa edelliseen", "Pidit tason" tai
@@ -94,6 +100,7 @@ Settings → Pages → Source: **GitHub Actions**.
 
 | Versio | Muutokset |
 |---|---|
+| 11 | Treenipohjat (tallennetut treenit etusivulla). Etusivulla treenihistoria siirretty viimeiseksi. |
 | 10 | Vatsaliikkeet: lisätty sit-up perus, tuettuna ja vino sekä kääntö taljassa; jalannosto dippitelineessä → jalannosto maaten; poistettu vatsarutistukset ja sivutaivutus. |
 | 9 | Seuraava treeni rakentuu toteutuneesta treenistä (liikkeet ja järjestys, myös pikkulihakset). Palaute liikkeen valmistuttua, yhteenvedon kooste ja ennätykset. Uusi kategoria Vatsat. |
 | 8 | Liikkeen ajastin pysähtyy, kun kaikki sarjat on tehty (tilalla ✓ Valmis). |

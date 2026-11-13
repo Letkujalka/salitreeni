@@ -2,7 +2,7 @@
 /* Salitreeni – treenien kirjaus ja painojen automaattinen nosto.
    Kaikki tiedot tallennetaan selaimen localStorageen (avain KEY). */
 
-const APP_VERSION = '10';
+const APP_VERSION = '11';
 const KEY = 'salitreeni.v1';
 const CHANGE_AFTER = 6;   // monenko treenin jälkeen ehdotetaan liikkeen vaihtoa
 const SNOOZE = 3;         // "Ei vielä" siirtää ehdotusta näin monta treeniä
@@ -409,11 +409,7 @@ function syncPlanWithProgram() {
   S.nextPlan = plan;
 }
 
-function startWorkout() {
-  S.active = { id: uid(), start: Date.now(), entries: plannedIds().map(makeEntry) };
-  save();
-  go('#/treeni');
-}
+function startWorkout() { startWith(plannedIds()); }
 
 function finishWorkout() {
   const a = S.active;
@@ -502,15 +498,46 @@ function viewHome() {
   } else {
     h += suggestionsHtml();
     h += `<button class="btn primary big" data-act="start">Aloita treeni</button>`;
-    h += `<div class="card"><h2>Seuraava treeni</h2><ul class="plan">${plannedIds().map(id => {
-      const x = S.exercises[id];
-      return `<li><span>${esc(x.name)}</span><span class="r">${weightLabel(x.kind, x.weight)} · ${rangeText(x)}</span></li>`;
-    }).join('')}</ul></div>`;
+    h += `<div class="card"><h2>Seuraava treeni</h2>${planListHtml(plannedIds())}
+      <button class="linkbtn" data-act="tplSaveNext">☆ Tallenna treenipohjaksi</button></div>`;
+    h += templatesHtml();
   }
+  h += `<nav class="links"><a class="btn" href="#/ohjelma">Ohjelma</a><a class="btn" href="#/liikkeet">Liikkeet</a><a class="btn" href="#/varmuuskopio">Varmuuskopio</a></nav>`;
   h += historyHtml();
-  h += `<nav class="links"><a class="btn" href="#/ohjelma">Ohjelma</a><a class="btn" href="#/liikkeet">Liikkeet</a><a class="btn" href="#/varmuuskopio">Varmuuskopio</a></nav>
-    <p class="ver">versio ${APP_VERSION}</p>`;
+  h += `<p class="ver">versio ${APP_VERSION}</p>`;
   return h;
+}
+
+function planListHtml(ids) {
+  return `<ul class="plan">${ids.filter(id => S.exercises[id]).map(id => {
+    const x = S.exercises[id];
+    return `<li><span>${esc(x.name)}</span><span class="r">${weightLabel(x.kind, x.weight)} · ${rangeText(x)}</span></li>`;
+  }).join('')}</ul>`;
+}
+
+/* ---------- treenipohjat ---------- */
+
+function templates() { return S.templates || (S.templates = []); }
+
+function templatesHtml() {
+  const list = templates();
+  if (!list.length) return '';
+  return `<div class="card"><h2>Treenipohjat</h2>${list.map(t => `<button class="opt" data-act="tplOpen" data-id="${t.id}">
+    <span>${esc(t.name)}</span><small>${t.ids.filter(id => S.exercises[id]).length} liikettä</small></button>`).join('')}</div>`;
+}
+
+function saveTemplate(ids, suggested) {
+  textBox('Treenipohjan nimi', suggested, name => {
+    if (!name) return;
+    templates().push({ id: uid(), name, ids: [...ids], created: Date.now() });
+    save(); render();
+  });
+}
+
+function startWith(ids) {
+  S.active = { id: uid(), start: Date.now(), entries: ids.filter(id => S.exercises[id]).map(makeEntry) };
+  save();
+  go('#/treeni');
 }
 
 function backupReminder() {
@@ -647,6 +674,7 @@ function viewSummary() {
     h += `<div class="res"><span>${esc(it.name)}<br><small>${resultText(it)} ${dotsHtml(it)}</small></span><span>${txt}</span></div>`;
   }
   h += `</div><p class="hint">↑ = paino nousee ensi kerralla, = pysyy samana, ↓ = laskee.</p>
+    <button class="btn block" data-act="tplSaveLast">☆ Tallenna tämä treeni treenipohjaksi</button>
     <a class="btn primary big" href="#/" data-act="closeSummary">Valmis</a>`;
   return h;
 }
@@ -752,6 +780,11 @@ function confirmBox(text, okLabel, onOk, danger) {
 function numberBox(title, value, onOk) {
   openModal(`<h2>${title}</h2><input id="numIn" inputmode="decimal" value="${value == null ? '' : fmtKg(value)}" autofocus>
     <div class="row"><button class="btn primary" data-act="numOk">OK</button><button class="btn" data-act="close">Peruuta</button></div>`, { onNum: onOk });
+}
+
+function textBox(title, value, onOk) {
+  openModal(`<h2>${title}</h2><input id="txtIn" value="${esc(value || '')}" autofocus>
+    <div class="row"><button class="btn primary" data-act="txtOk">OK</button><button class="btn" data-act="close">Peruuta</button></div>`, { onTxt: onOk });
 }
 
 function pickExercise(title, cats, onPick) {
@@ -862,8 +895,54 @@ const ACT = {
     const v = parseNum(document.getElementById('numIn').value);
     const f = modalCtx.onNum; closeModal(); if (f) f(v);
   },
+  txtOk: () => {
+    const v = document.getElementById('txtIn').value.trim();
+    const f = modalCtx.onTxt; closeModal(); if (f) f(v);
+  },
   picked: el => { const f = modalCtx.onPick; closeModal(); if (f) f(el.dataset.id); },
   closeSummary: () => { S.lastSummary = null; save(); },
+
+  // treenipohjat
+  tplSaveNext: () => saveTemplate(plannedIds(), `Treeni ${templates().length + 1}`),
+  tplSaveLast: () => {
+    const last = S.sessions[S.sessions.length - 1];
+    if (last) saveTemplate(last.entries.map(e => e.exId).filter((id, k, a) => a.indexOf(id) === k), `Treeni ${templates().length + 1}`);
+  },
+  tplOpen: el => {
+    const t = templates().find(x => x.id === el.dataset.id);
+    if (!t) return;
+    openModal(`<h2>${esc(t.name)}</h2>${planListHtml(t.ids)}
+      <button class="btn primary block" data-act="tplStart" data-id="${t.id}">Aloita treeni tällä pohjalla</button>
+      <button class="btn block" data-act="tplNext" data-id="${t.id}">Ota seuraavaksi treeniksi</button>
+      <button class="btn block" data-act="tplUpdate" data-id="${t.id}">Korvaa seuraavan treenin liikkeillä</button>
+      <button class="btn block" data-act="tplRename" data-id="${t.id}">Nimeä uudelleen</button>
+      <button class="btn block danger" data-act="tplDelete" data-id="${t.id}">Poista pohja</button>
+      <button class="btn block" data-act="close">Sulje</button>`);
+  },
+  tplStart: el => { const t = templates().find(x => x.id === el.dataset.id); closeModal(); if (t) startWith(t.ids); },
+  tplNext: el => {
+    const t = templates().find(x => x.id === el.dataset.id);
+    if (!t) return;
+    S.nextPlan = t.ids.filter(id => S.exercises[id]);
+    closeModal(); save(); render();
+  },
+  tplUpdate: el => {
+    const t = templates().find(x => x.id === el.dataset.id);
+    if (!t) return;
+    confirmBox(`Korvataanko pohjan "${esc(t.name)}" liikkeet seuraavan treenin liikkeillä?`, 'Korvaa', () => {
+      t.ids = plannedIds(); save(); render();
+    });
+  },
+  tplRename: el => {
+    const t = templates().find(x => x.id === el.dataset.id);
+    if (t) textBox('Treenipohjan nimi', t.name, name => { if (name) { t.name = name; save(); render(); } });
+  },
+  tplDelete: el => {
+    const t = templates().find(x => x.id === el.dataset.id);
+    if (t) confirmBox(`Poistetaanko treenipohja "${esc(t.name)}"? Treenihistoria ei muutu.`, 'Poista', () => {
+      S.templates = templates().filter(x => x !== t); save(); render();
+    }, true);
+  },
 
   // ohjelma
   pick: el => {
